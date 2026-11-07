@@ -68,6 +68,8 @@ services:
     <<: *svc
     build: ./services/separation
     command: celery -A app.worker worker -Q separation --concurrency=1 --loglevel=info
+    volumes:
+      - torch-cache:/home/app/.cache/torch   # modelo do Demucs (~80 MB), baixado uma vez só
     depends_on:
       redis: {condition: service_healthy}
 
@@ -81,3 +83,4 @@ services:
 volumes:
   pgdata: {}
   s3data: {}
+  torch-cache: {}

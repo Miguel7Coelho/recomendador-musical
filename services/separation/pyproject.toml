@@ -3,8 +3,14 @@ name = "separation"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "boto3>=1.35",
     "celery[redis]>=5.5",
+    "demucs==4.1.0",
     "fastapi>=0.115",
+    "python-multipart>=0.0.9",
+    "soundfile>=0.12",
+    "torch==2.8.*",
+    "torchaudio==2.8.*",
     "uvicorn[standard]>=0.32",
 ]
 
@@ -16,3 +22,18 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+
+# torch e torchaudio vêm do índice CPU do PyTorch (sem CUDA: imagem bem menor).
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchaudio = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+# O serviço só roda em Linux (Docker e Fedora). Sem isso, o uv tenta resolver também para
+# o macOS Intel, onde o Demucs exige torch < 2.3 e o lock fica impossível.
+[tool.uv]
+environments = ["sys_platform == 'linux'"]

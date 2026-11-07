@@ -25,5 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v6
+      - if: matrix.service == 'separation'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: uv sync --frozen --python 3.12
       - run: uv run pytest -q
