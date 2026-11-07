@@ -32,8 +32,8 @@ def stem_keys(sha: str) -> dict[str, str]:
     return {stem: f"stems/{sha}/{stem}.wav" for stem in STEMS}
 
 
-def features_key(sha: str) -> str:
-    return f"features/{sha}.json"
+def analysis_key(sha: str) -> str:
+    return f"analysis/{sha}.json"
 
 
 def exists(key: str) -> bool:

@@ -1,6 +1,7 @@
 -- Esquema inicial do MVP (seção 6 da especificação).
 -- Roda só na primeira subida, quando o volume pgdata está vazio.
--- A dimensão do vetor (512) é a do CLAP; se a F2 escolher o MERT, muda para 768.
+-- Os vetores ficam sem dimensão fixa enquanto a F2 compara modelos (EffNet 1280, CLAP 512);
+-- depois da escolha, a dimensão é fixada e o índice HNSW é criado.
 
 CREATE EXTENSION IF NOT EXISTS vector;
 
@@ -13,8 +14,10 @@ CREATE TABLE tracks (
     artist      text,
     year        int,
     duration_s  real,
+    dataset_genre text,          -- rótulo da base (ex.: gênero da FMA), para a avaliação
     created_at  timestamptz DEFAULT now()
 );
+CREATE UNIQUE INDEX tracks_source_external_id_key ON tracks (source, external_id);
 
 CREATE TABLE track_features (
     track_id         uuid PRIMARY KEY REFERENCES tracks(id) ON DELETE CASCADE,
@@ -37,10 +40,9 @@ CREATE TABLE track_embeddings (
     track_id uuid REFERENCES tracks(id) ON DELETE CASCADE,
     model    text NOT NULL,
     stem     text NOT NULL DEFAULT 'mix',
-    vec      vector(512) NOT NULL,
+    vec      vector NOT NULL,
     PRIMARY KEY (track_id, model, stem)
 );
-CREATE INDEX ON track_embeddings USING hnsw (vec vector_cosine_ops);
 
 CREATE TABLE jobs (
     id           uuid PRIMARY KEY,

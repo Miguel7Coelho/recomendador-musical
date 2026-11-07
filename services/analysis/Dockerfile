@@ -21,6 +21,8 @@ COPY app ./app
 
 RUN useradd --create-home --uid 1000 app
 USER app
+# Cache do modelo CLAP (Hugging Face): criada aqui para o volume herdar o dono "app".
+RUN mkdir -p /home/app/.cache/huggingface
 
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

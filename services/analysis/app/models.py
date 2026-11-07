@@ -60,15 +60,29 @@ def predict(name: str, emb: np.ndarray) -> dict[str, float]:
 
 
 def genre_summary(probs: dict[str, float], k: int = 5) -> dict:
-    """Top-k estilos do Discogs e o gênero amplo do primeiro (ex.: "Hip Hop---Trap" → "Hip Hop")."""
+    """Top-k estilos do Discogs e o gênero amplo com a maior soma de probabilidades.
+
+    Somar os estilos de cada gênero ("Funk / Soul---Contemporary R&B", "Funk / Soul---Neo Soul"...)
+    é mais estável que olhar só o primeiro estilo quando o modelo está em dúvida.
+    """
     top = sorted(probs.items(), key=lambda kv: kv[1], reverse=True)[:k]
+    broad: dict[str, float] = {}
+    for label, p in probs.items():
+        genre = label.split("---")[0]
+        broad[genre] = broad.get(genre, 0.0) + p
     return {
         "styles": {label: round(p, 4) for label, p in top},
-        "genre_top": top[0][0].split("---")[0],
+        "genre_top": max(broad, key=broad.get),
     }
 
 
+VOICE_THRESHOLD = 0.5
+
+
 def voice_summary(voice: dict[str, float], gender: dict[str, float]) -> dict:
-    """Presença de voz e tipo. O filtro de voz só deve usar o tipo quando a presença for alta."""
+    """Presença de voz e, só quando ela for alta, o tipo de voz (senão fica vazio)."""
+    presence = voice["voice"]
+    if presence < VOICE_THRESHOLD:
+        return {"vocal_presence": presence, "vocal_gender": None, "vocal_confidence": None}
     label, conf = max(gender.items(), key=lambda kv: kv[1])
-    return {"vocal_presence": voice["voice"], "vocal_gender": label, "vocal_confidence": conf}
+    return {"vocal_presence": presence, "vocal_gender": label, "vocal_confidence": conf}

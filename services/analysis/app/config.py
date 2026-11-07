@@ -8,3 +8,4 @@ S3_SECRET_KEY = os.getenv("S3_SECRET_KEY", "")
 S3_BUCKET = os.getenv("S3_BUCKET", "audio")
 
 ESSENTIA_MODELS_DIR = os.getenv("ESSENTIA_MODELS_DIR", "/models")
+CLAP_MODEL = os.getenv("CLAP_MODEL", "laion/larger_clap_music")

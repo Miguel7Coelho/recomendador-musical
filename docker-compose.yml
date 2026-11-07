@@ -76,9 +76,11 @@ services:
   analysis-worker:
     <<: *svc
     build: ./services/analysis
-    command: celery -A app.worker worker -Q analysis --concurrency=2 --loglevel=info
+    # concurrency=1: cada processo carrega TensorFlow + CLAP (~2 GB de RAM).
+    command: celery -A app.worker worker -Q analysis --concurrency=1 --loglevel=info
     volumes:
       - ./models:/models:ro,Z   # modelos da Essentia (fora do Git)
+      - hf-cache:/home/app/.cache/huggingface   # modelo CLAP, baixado uma vez só
     depends_on:
       redis: {condition: service_healthy}
 
@@ -86,3 +88,4 @@ volumes:
   pgdata: {}
   s3data: {}
   torch-cache: {}
+  hf-cache: {}

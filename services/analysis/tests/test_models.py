@@ -14,9 +14,23 @@ def test_genre_summary() -> None:
     assert r["genre_top"] == "Hip Hop"
 
 
+def test_genre_amplo_pela_soma() -> None:
+    # Um estilo eletrônico na frente, mas três de Funk / Soul somando mais.
+    probs = {"Electronic---Downtempo": 0.13, "Funk / Soul---Contemporary R&B": 0.10,
+             "Funk / Soul---Neo Soul": 0.08, "Funk / Soul---Soul": 0.05}  # fmt: skip
+    r = models.genre_summary(probs)
+    assert next(iter(r["styles"])) == "Electronic---Downtempo"
+    assert r["genre_top"] == "Funk / Soul"
+
+
 def test_voice_summary() -> None:
     r = models.voice_summary({"instrumental": 0.1, "voice": 0.9}, {"female": 0.8, "male": 0.2})
     assert r == {"vocal_presence": 0.9, "vocal_gender": "female", "vocal_confidence": 0.8}
+
+
+def test_instrumental_sem_tipo_de_voz() -> None:
+    r = models.voice_summary({"instrumental": 0.58, "voice": 0.42}, {"female": 0.7, "male": 0.3})
+    assert r == {"vocal_presence": 0.42, "vocal_gender": None, "vocal_confidence": None}
 
 
 @pytest.fixture

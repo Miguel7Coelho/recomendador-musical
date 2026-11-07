@@ -2,7 +2,7 @@ import essentia.standard as es
 import numpy as np
 import synth
 
-from app import models, pipeline
+from app import embed, models, pipeline
 
 
 def write(path, audio) -> None:
@@ -27,8 +27,10 @@ def test_analyze_formato_track_features(tmp_path, monkeypatch) -> None:
         models.GENDER: {"female": 0.5, "male": 0.5},
     }
     monkeypatch.setattr(models, "predict", lambda name, emb: fake[name])
+    monkeypatch.setattr(embed, "clap_embedding", lambda audio: [0.0] * 512)
 
-    r = pipeline.analyze(tmp_path / "mix.wav", {k: tmp_path / f"{k}.wav" for k in paths})
+    out = pipeline.analyze(tmp_path / "mix.wav", {k: tmp_path / f"{k}.wav" for k in paths})
+    r = out["features"]
 
     assert set(r) == {
         "key", "scale", "camelot", "key_strength", "bpm", "bpm_confidence", "hihat_density",
@@ -39,3 +41,5 @@ def test_analyze_formato_track_features(tmp_path, monkeypatch) -> None:
     assert abs(r["bpm"] - 120) < 2
     assert r["genre_top"] == "Pop"
     assert r["subbass_energy"] > 0
+    assert len(out["embeddings"]["clap"]) == 512
+    assert len(out["embeddings"]["effnet"]) == 1280

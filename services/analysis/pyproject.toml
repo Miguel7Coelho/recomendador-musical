@@ -8,6 +8,9 @@ dependencies = [
     # A dev1389 é a última versão com pacote para o Python 3.12 (a dev1438 só tem para o 3.14).
     "essentia-tensorflow==2.1b6.dev1389",
     "fastapi>=0.115",
+    "torch==2.8.*",
+    # CLAP: a API usada (ClapFeatureExtractor / get_audio_features) é a da série 4.
+    "transformers>=4.45,<5",
     "uvicorn[standard]>=0.32",
 ]
 
@@ -23,3 +26,12 @@ pythonpath = ["."]
 # A Essentia só publica pacotes para Linux nesta versão.
 [tool.uv]
 environments = ["sys_platform == 'linux'"]
+
+# torch vem do índice CPU do PyTorch (sem CUDA: imagem bem menor).
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

@@ -3,7 +3,7 @@ import pytest
 import app.worker as worker
 from app.worker import StemsMissing, celery, ping
 
-FEATURES = {"camelot": "8A", "bpm": 120.0}
+RESULT = {"features": {"camelot": "8A", "bpm": 120.0}, "embeddings": {"clap": [0.1]}}
 
 
 def test_queue() -> None:
@@ -15,9 +15,9 @@ def test_ping() -> None:
 
 
 def test_usa_cache(monkeypatch) -> None:
-    monkeypatch.setattr(worker, "get_json", lambda key: FEATURES)
+    monkeypatch.setattr(worker, "get_json", lambda key: RESULT)
     r = worker.analyze.apply(args=["abc"]).get()
-    assert r == {"sha": "abc", "features": FEATURES, "cached": True}
+    assert r == {"sha": "abc", **RESULT, "cached": True}
 
 
 def test_sem_stems(monkeypatch) -> None:
@@ -33,7 +33,7 @@ def test_analisa_e_grava(monkeypatch) -> None:
     monkeypatch.setattr(worker, "exists", lambda key: True)
     monkeypatch.setattr(worker, "download", lambda key, path: path.write_bytes(b""))
     monkeypatch.setattr(worker, "put_json", lambda key, data: saved.update({key: data}))
-    monkeypatch.setattr("app.pipeline.analyze", lambda mix, stems: FEATURES)
+    monkeypatch.setattr("app.pipeline.analyze", lambda mix, stems: RESULT)
     r = worker.analyze.apply(args=["abc"]).get()
     assert r["cached"] is False
-    assert saved == {"features/abc.json": FEATURES}
+    assert saved == {"analysis/abc.json": RESULT}

@@ -4,7 +4,7 @@ from tempfile import TemporaryDirectory
 from celery import Celery
 
 from app.config import REDIS_URL
-from app.storage import download, exists, features_key, get_json, input_key, put_json, stem_keys
+from app.storage import analysis_key, download, exists, get_json, input_key, put_json, stem_keys
 
 QUEUE = "analysis"
 
@@ -31,9 +31,9 @@ def ping() -> str:
 
 @celery.task(name=f"{QUEUE}.analyze")
 def analyze(sha: str) -> dict:
-    cached = get_json(features_key(sha))
+    cached = get_json(analysis_key(sha))
     if cached is not None:
-        return {"sha": sha, "features": cached, "cached": True}
+        return {"sha": sha, **cached, "cached": True}
 
     keys = stem_keys(sha)
     if not all(exists(k) for k in keys.values()):
@@ -48,7 +48,7 @@ def analyze(sha: str) -> dict:
         for stem, key in keys.items():
             stems[stem] = Path(tmp) / f"{stem}.wav"
             download(key, stems[stem])
-        features = run(mix, stems)
+        result = run(mix, stems)
 
-    put_json(features_key(sha), features)
-    return {"sha": sha, "features": features, "cached": False}
+    put_json(analysis_key(sha), result)
+    return {"sha": sha, **result, "cached": False}

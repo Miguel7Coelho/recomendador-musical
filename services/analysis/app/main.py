@@ -2,7 +2,7 @@ from celery.result import AsyncResult
 from fastapi import FastAPI, Response
 from pydantic import BaseModel, Field
 
-from app.storage import features_key, get_json
+from app.storage import analysis_key, get_json
 from app.worker import analyze, celery
 
 SERVICE = "analysis"
@@ -21,9 +21,9 @@ def health() -> dict[str, str]:
 
 @app.post("/analyze")
 def create_analysis(req: AnalyzeRequest, response: Response) -> dict:
-    cached = get_json(features_key(req.sha))
+    cached = get_json(analysis_key(req.sha))
     if cached is not None:
-        return {"status": "done", "cached": True, "sha": req.sha, "features": cached}
+        return {"status": "done", "cached": True, "sha": req.sha, **cached}
     job = analyze.delay(req.sha)
     response.status_code = 202
     return {"status": "queued", "job_id": job.id, "sha": req.sha}

@@ -22,10 +22,11 @@ def test_enfileira(client) -> None:
 
 
 def test_cache(client, monkeypatch) -> None:
-    monkeypatch.setattr(main, "get_json", lambda key: {"camelot": "8A"})
+    monkeypatch.setattr(main, "get_json", lambda key: {"features": {"camelot": "8A"}})
     r = client.post("/analyze", json={"sha": SHA})
     assert r.status_code == 200
     assert r.json()["cached"] is True
+    assert r.json()["features"] == {"camelot": "8A"}
 
 
 def test_sha_invalido(client) -> None:
