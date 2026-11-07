@@ -63,7 +63,20 @@ services:
   catalog-api:    {<<: *api, build: ./services/catalog,    ports: ["127.0.0.1:8003:8000"]}
   spotify-api:    {<<: *api, build: ./services/spotify,    ports: ["127.0.0.1:8004:8000"]}
 
-  # Os workers do Celery (separation-worker, analysis-worker) entram no cartão INF-02.
+  # Workers do Celery: mesma imagem do serviço, outro comando. Cada um consome a sua fila no Redis.
+  separation-worker:
+    <<: *svc
+    build: ./services/separation
+    command: celery -A app.worker worker -Q separation --concurrency=1 --loglevel=info
+    depends_on:
+      redis: {condition: service_healthy}
+
+  analysis-worker:
+    <<: *svc
+    build: ./services/analysis
+    command: celery -A app.worker worker -Q analysis --concurrency=2 --loglevel=info
+    depends_on:
+      redis: {condition: service_healthy}
 
 volumes:
   pgdata: {}
