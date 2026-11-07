@@ -1,0 +1,70 @@
+# Cartão INF-01: infraestrutura + esqueleto dos 5 serviços.
+# Todas as portas ficam presas a 127.0.0.1: o Docker ignora o firewalld,
+# então sem isso o Postgres e o S3 ficariam abertos para a rede local.
+
+x-svc: &svc
+  env_file: .env
+  restart: unless-stopped
+
+x-api: &api
+  <<: *svc
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+    interval: 10s
+    timeout: 3s
+    retries: 5
+  depends_on:
+    postgres: {condition: service_healthy}
+    redis: {condition: service_healthy}
+    s3: {condition: service_started}
+
+services:
+  postgres:
+    <<: *svc
+    image: pgvector/pgvector:pg17
+    ports: ["127.0.0.1:5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/init.sql:/docker-entrypoint-initdb.d/init.sql:ro,Z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    <<: *svc
+    image: redis:7-alpine
+    ports: ["127.0.0.1:6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Armazenamento de objetos compatível com S3 (substitui o MinIO, que deixou de ser publicado).
+  # A imagem roda "weed mini": cria as credenciais e o bucket na primeira subida.
+  s3:
+    image: chrislusf/seaweedfs:latest
+    restart: unless-stopped
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+    ports:
+      - "127.0.0.1:8333:8333"     # API S3
+      - "127.0.0.1:23646:23646"   # painel de administração
+    volumes:
+      - s3data:/data
+
+  gateway:        {<<: *api, build: ./services/gateway,    ports: ["127.0.0.1:8000:8000"]}
+  separation-api: {<<: *api, build: ./services/separation, ports: ["127.0.0.1:8001:8000"]}
+  analysis-api:   {<<: *api, build: ./services/analysis,   ports: ["127.0.0.1:8002:8000"]}
+  catalog-api:    {<<: *api, build: ./services/catalog,    ports: ["127.0.0.1:8003:8000"]}
+  spotify-api:    {<<: *api, build: ./services/spotify,    ports: ["127.0.0.1:8004:8000"]}
+
+  # Os workers do Celery (separation-worker, analysis-worker) entram no cartão INF-02.
+
+volumes:
+  pgdata: {}
+  s3data: {}
