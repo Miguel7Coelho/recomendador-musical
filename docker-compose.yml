@@ -77,6 +77,8 @@ services:
     <<: *svc
     build: ./services/analysis
     command: celery -A app.worker worker -Q analysis --concurrency=2 --loglevel=info
+    volumes:
+      - ./models:/models:ro,Z   # modelos da Essentia (fora do Git)
     depends_on:
       redis: {condition: service_healthy}
 

@@ -1,4 +1,9 @@
-from app.worker import celery, ping
+import pytest
+
+import app.worker as worker
+from app.worker import StemsMissing, celery, ping
+
+FEATURES = {"camelot": "8A", "bpm": 120.0}
 
 
 def test_queue() -> None:
@@ -7,3 +12,28 @@ def test_queue() -> None:
 
 def test_ping() -> None:
     assert ping.apply().get() == "pong"
+
+
+def test_usa_cache(monkeypatch) -> None:
+    monkeypatch.setattr(worker, "get_json", lambda key: FEATURES)
+    r = worker.analyze.apply(args=["abc"]).get()
+    assert r == {"sha": "abc", "features": FEATURES, "cached": True}
+
+
+def test_sem_stems(monkeypatch) -> None:
+    monkeypatch.setattr(worker, "get_json", lambda key: None)
+    monkeypatch.setattr(worker, "exists", lambda key: False)
+    with pytest.raises(StemsMissing):
+        worker.analyze.apply(args=["abc"]).get()
+
+
+def test_analisa_e_grava(monkeypatch) -> None:
+    saved = {}
+    monkeypatch.setattr(worker, "get_json", lambda key: None)
+    monkeypatch.setattr(worker, "exists", lambda key: True)
+    monkeypatch.setattr(worker, "download", lambda key, path: path.write_bytes(b""))
+    monkeypatch.setattr(worker, "put_json", lambda key, data: saved.update({key: data}))
+    monkeypatch.setattr("app.pipeline.analyze", lambda mix, stems: FEATURES)
+    r = worker.analyze.apply(args=["abc"]).get()
+    assert r["cached"] is False
+    assert saved == {"features/abc.json": FEATURES}

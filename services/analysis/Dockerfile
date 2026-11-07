@@ -7,6 +7,11 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
     PATH="/opt/venv/bin:$PATH"
 
+# libstdc++: exigida pela Essentia/TensorFlow (quase sempre já presente; garante na imagem slim)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libstdc++6 \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /srv
 
 COPY pyproject.toml uv.lock ./

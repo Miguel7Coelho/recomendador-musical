@@ -3,7 +3,10 @@ name = "analysis"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "boto3>=1.35",
     "celery[redis]>=5.5",
+    # A dev1389 é a última versão com pacote para o Python 3.12 (a dev1438 só tem para o 3.14).
+    "essentia-tensorflow==2.1b6.dev1389",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.32",
 ]
@@ -16,3 +19,7 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+
+# A Essentia só publica pacotes para Linux nesta versão.
+[tool.uv]
+environments = ["sys_platform == 'linux'"]
