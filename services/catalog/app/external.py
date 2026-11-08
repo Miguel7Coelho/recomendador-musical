@@ -122,6 +122,10 @@ def _find_on_spotify(tracks: list[dict]) -> list[tuple[dict, dict]]:
     with ThreadPoolExecutor(MATCH_WORKERS) as pool:
         answers = list(pool.map(lookup, tracks))
     errors = [a for a in answers if isinstance(a, Exception)]
+    limited = [e for e in errors if isinstance(e, httpx.HTTPStatusError)]
+    limited = [e for e in limited if e.response.status_code == 429]
+    if limited:
+        raise limited[0]  # bloqueado: o que restou seria pouco, melhor usar o plano B inteiro
     if tracks and len(errors) == len(tracks):
         raise errors[0]
     return [(t, a) for t, a in zip(tracks, answers) if isinstance(a, dict)]
@@ -235,7 +239,44 @@ def _pick(cands: list[dict], k: int) -> list[dict]:
     return results
 
 
+def _backup(features: dict, k: int, track: dict | None) -> dict:
+    """Spotify fora: mesmas fontes do Last.fm, mas sem como conferir andamento e tom. O front
+    procura o vídeo no YouTube só para a faixa que estiver na tela."""
+    tracks = _listener_tracks(track) if track else []
+    tags = style_tags(features) if len(tracks) < k else {}
+    if tags:
+        tracks += _tagged_tracks(tags)
+
+    results: list[dict] = []
+    seen, per_artist = set(), {}
+    for t in tracks:
+        artist = t["artist"].casefold()
+        key = (t["title"].casefold(), artist)
+        if key in seen or per_artist.get(artist, 0) >= MAX_PER_ARTIST:
+            continue
+        seen.add(key)
+        if NOISE_TITLE.search(t["title"]):
+            continue
+        per_artist[artist] = per_artist.get(artist, 0) + 1
+        why = t["tags"][0] if t["tags"] else "ouvintes também escutam"
+        results.append(
+            {"source": "backup", "title": t["title"], "artists": [t["artist"]], "explanation": why}
+        )
+        if len(results) == k:
+            break
+    return {"results": results, "tags": list(tags), "relaxed": []}
+
+
 def recommendations(
+    features: dict, exclude_ids: list[str], k: int, track: dict | None = None
+) -> dict:
+    try:
+        return _spotify_recommendations(features, exclude_ids, k, track)
+    except httpx.HTTPError:
+        return _backup(features, k, track)
+
+
+def _spotify_recommendations(
     features: dict, exclude_ids: list[str], k: int, track: dict | None = None
 ) -> dict:
     """Com a música conhecida, o gosto dos ouvintes vale mais que o estilo detectado e dispensa
@@ -259,9 +300,12 @@ def recommendations(
 
 def song_recommendations(title: str, artist: str, k: int) -> dict:
     """Pesquisa sem áudio: tom e andamento vêm da própria música quando a ReccoBeats a conhece."""
-    match = _spotify_match(title, artist)
-    sid = match["spotify_id"] if match else None
-    feats = _recco_features([sid]).get(sid, {}) if sid else {}
+    try:
+        match = _spotify_match(title, artist)
+        sid = match["spotify_id"] if match else None
+        feats = _recco_features([sid]).get(sid, {}) if sid else {}
+    except httpx.HTTPError:
+        sid, feats = None, {}  # sem Spotify: a recomendação cai no plano B
     camelot = camelot_from_pitch(feats.get("key"), feats.get("mode"))
     bpm = feats.get("tempo")
     try:

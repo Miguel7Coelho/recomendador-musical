@@ -16,7 +16,7 @@ from fastapi import (
 )
 from fastapi.responses import RedirectResponse, StreamingResponse
 
-from app import clients, jobs
+from app import clients, jobs, youtube
 from app.config import (
     CATALOG_URL,
     COOKIE_SECURE,
@@ -102,6 +102,15 @@ def recommend_from_job(job_id: UUID, options: dict | None = Body(None)) -> dict:
 @app.get("/songs/search")
 def search_songs(q: str) -> dict:
     return _ok(clients.http().get(f"{CATALOG_URL}/songs/search", params={"q": q}))
+
+
+@app.get("/songs/youtube")
+def youtube_video(title: str, artist: str) -> dict:
+    """Vídeo para o plano B; chamada por faixa exibida, pois cada busca custa cota."""
+    try:
+        return {"video_id": youtube.find(title, artist)}
+    except youtube.Unavailable as e:
+        raise HTTPException(503, "YouTube indisponível no momento") from e
 
 
 @app.post("/songs/recommend")

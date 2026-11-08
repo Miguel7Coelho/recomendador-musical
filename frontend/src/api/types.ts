@@ -62,10 +62,20 @@ export type SpotifyTrack = {
   explanation: string;
 };
 
+/** Spotify fora do ar: sem id, tom e BPM; o player vem do YouTube. */
+export type BackupTrack = {
+  source: "backup";
+  title: string;
+  artists: string[];
+  explanation: string;
+};
+
+export type ExternalTrack = SpotifyTrack | BackupTrack;
+
 export type JobResult = {
   catalog: CatalogTrack[];
   relaxed: string[];
-  spotify: SpotifyTrack[];
+  spotify: ExternalTrack[];
   spotify_relaxed?: string[];
   spotify_error?: string;
 };
@@ -112,7 +122,7 @@ export type Song = { title: string; artist: string };
 
 export type SongProfile = Song & { camelot: string | null; bpm: number | null; tags: string[] };
 
-export type SongRecommendation = { song: SongProfile; results: SpotifyTrack[] };
+export type SongRecommendation = { song: SongProfile; results: ExternalTrack[] };
 
 export type SpotifyMatch = { spotify_id: string } & Record<string, unknown>;
 

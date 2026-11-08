@@ -1,6 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
 import { useRef, useState, type CSSProperties } from "react";
 
-import { gatewayUrl } from "../api/client";
+import { api, gatewayUrl } from "../api/client";
 import type { Rec } from "../lib/recs";
 import { recTitle } from "../lib/recs";
 
@@ -93,9 +94,42 @@ function AudioPlayer({ src, title, autoplay, onEnded }: AudioPlayerProps) {
   );
 }
 
+function YouTubePlayer({ title, artist }: { title: string; artist: string }) {
+  const video = useQuery({
+    queryKey: ["youtube", title, artist],
+    queryFn: () => api.youtubeVideo({ title, artist }),
+    retry: false,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  });
+  if (video.isPending) return <p className="bg-raised p-3 text-small text-muted">Procurando o vídeo…</p>;
+  if (video.data?.video_id) {
+    return (
+      <iframe
+        title={`Ouvir ${title} no YouTube`}
+        src={`https://www.youtube-nocookie.com/embed/${video.data.video_id}`}
+        className="block aspect-video w-full rounded-sm border-0"
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+      />
+    );
+  }
+  const search = new URLSearchParams({ search_query: `${artist} ${title}` });
+  return (
+    <p className="bg-raised p-3 text-small text-muted">
+      Vídeo indisponível aqui.{" "}
+      <a className="text-accent underline" href={`https://www.youtube.com/results?${search}`} target="_blank" rel="noreferrer">
+        Procurar no YouTube
+      </a>
+    </p>
+  );
+}
+
 type PlayerProps = { rec: Rec; autoplay: boolean; onEnded: () => void };
 
 export function Player({ rec, autoplay, onEnded }: PlayerProps) {
+  if (rec.kind === "backup") {
+    return <YouTubePlayer key={rec.key} title={rec.track.title} artist={rec.track.artists[0] ?? ""} />;
+  }
   if (rec.kind === "spotify") {
     return (
       <div className="overflow-hidden rounded-sm">

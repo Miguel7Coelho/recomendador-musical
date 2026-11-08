@@ -10,6 +10,7 @@ const MAX_PLAYLIST_TRACKS = 500;
 
 async function spotifyIdOf(rec: Rec): Promise<string | null> {
   if (rec.kind === "spotify") return rec.track.spotify_id;
+  if (rec.kind === "backup") return null; // veio do plano B, sem id do Spotify
   if (rec.track.spotify_id) return rec.track.spotify_id;
   return (await api.matchOnSpotify(rec.track.id)).match?.spotify_id ?? null;
 }

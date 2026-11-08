@@ -1,8 +1,9 @@
-import type { CatalogTrack, SpotifyTrack } from "../api/types";
+import type { BackupTrack, CatalogTrack, ExternalTrack, SpotifyTrack } from "../api/types";
 
 export type Rec =
   | { kind: "catalog"; key: string; track: CatalogTrack }
-  | { kind: "spotify"; key: string; track: SpotifyTrack };
+  | { kind: "spotify"; key: string; track: SpotifyTrack }
+  | { kind: "backup"; key: string; track: BackupTrack };
 
 export const fromCatalog = (track: CatalogTrack): Rec => ({
   kind: "catalog",
@@ -10,15 +11,14 @@ export const fromCatalog = (track: CatalogTrack): Rec => ({
   track,
 });
 
-export const fromSpotify = (track: SpotifyTrack): Rec => ({
-  kind: "spotify",
-  key: `spotify:${track.spotify_id}`,
-  track,
-});
+export const fromExternal = (track: ExternalTrack): Rec =>
+  track.source === "backup"
+    ? { kind: "backup", key: `backup:${track.title}|${track.artists[0]}`, track }
+    : { kind: "spotify", key: `spotify:${track.spotify_id}`, track };
 
 /** O Spotify vem primeiro; o catálogo FMA completa a fila. */
-export const spotifyFirst = (catalog: CatalogTrack[], spotify: SpotifyTrack[]): Rec[] => [
-  ...spotify.map(fromSpotify),
+export const spotifyFirst = (catalog: CatalogTrack[], spotify: ExternalTrack[]): Rec[] => [
+  ...spotify.map(fromExternal),
   ...catalog.map(fromCatalog),
 ];
 

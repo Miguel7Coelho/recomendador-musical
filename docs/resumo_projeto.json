@@ -48,6 +48,8 @@
   },
   "endpoints_gateway": {
     "GET /songs/search?q=": "sugestões do Last.fm para dizer qual música foi enviada → {results: [{title, artist}]}",
+    "GET /songs/youtube?title=&artist=": "plano B: {video_id | null}; 503 sem cota ou sem chave",
+    "POST /songs/recommend": "pesquisa sem áudio: {title, artist} → {song: {title, artist, camelot, bpm, tags}, results}",
     "POST /analyze": "multipart campo 'file' e opcionais 'title' e 'artist' → 202 {job_id, status, sha, [features], [result]}; 400 áudio inválido/curto (<3 s), 413 > 25 MB",
     "GET /jobs/{job_id}": "{job_id, status: separating|analyzing|searching|done|failed, sha, features?, result?, error?}; job expira em 2 h",
     "POST /jobs/{job_id}/recommend": "refaz a busca no catálogo com a análise guardada no job; corpo opcional RecommendOptions → {results, levels, relaxed, pool}; 404 job expirado, 409 análise não terminou, 503 catálogo fora; não refaz as faixas do Spotify",
@@ -174,6 +176,11 @@
       "tema": "Áudio da FMA",
       "decisao": "servido pelo gateway com crédito ao artista e licença",
       "motivo": "licenças Creative Commons; várias são NonCommercial (ok para TCC, exige crédito)"
+    },
+    {
+      "tema": "Plano B do Spotify",
+      "decisao": "com o Spotify bloqueado ou fora, as faixas do Last.fm tocam pelo YouTube; o vídeo é buscado só para a faixa na tela e guardado no Redis",
+      "motivo": "um bloqueio 429 do Spotify durou ~22 h; a cota gratuita do YouTube cobre ~100 buscas por dia. Sem id do Spotify não há tom, BPM nem exportação para playlist"
     },
     {
       "tema": "Comportamento dos ouvintes",

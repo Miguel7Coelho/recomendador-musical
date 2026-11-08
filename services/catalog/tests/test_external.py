@@ -246,6 +246,46 @@ def test_endpoint_da_pesquisa_nao_vaza_a_chave(fake, monkeypatch) -> None:
     assert r.status_code == 502 and "SEGREDO" not in r.text
 
 
+@pytest.fixture
+def blocked(fake, monkeypatch):
+    def limited(title, artist):
+        req = httpx.Request("POST", "http://spotify-api/match")
+        raise httpx.HTTPStatusError("429", request=req, response=httpx.Response(429))
+
+    monkeypatch.setattr(external, "_spotify_match", limited)
+
+
+def test_spotify_bloqueado_usa_o_plano_b(blocked) -> None:
+    out = external.recommendations(QUERY, [], k=2, track=KNOWN)
+    assert out["results"][0] == {"source": "backup", "title": "folky",
+                                 "artists": ["Artista folky"],
+                                 "explanation": "ouvintes também escutam"}  # fmt: skip
+    assert len(out["results"]) == 2
+
+
+def test_plano_b_mantem_a_regra_de_genero_nas_etiquetas(blocked) -> None:
+    titles = [r["title"] for r in external.recommendations(QUERY, [], k=20)["results"]]
+    assert "folky" not in titles and "both" in titles
+
+
+def test_pesquisa_com_spotify_bloqueado(blocked) -> None:
+    out = external.song_recommendations("Seed", "Fulano", k=2)
+    assert out["song"]["bpm"] is None and out["results"][0]["source"] == "backup"
+
+
+def test_uma_recusa_por_limite_derruba_a_rodada(monkeypatch) -> None:
+    def match(title, artist):
+        if title == "boa":
+            return {"spotify_id": "x"}
+        req = httpx.Request("POST", "http://spotify-api/match")
+        raise httpx.HTTPStatusError("429", request=req, response=httpx.Response(429))
+
+    monkeypatch.setattr(external, "_spotify_match", match)
+    tracks = [{"title": "boa", "artist": "a"}, {"title": "ruim", "artist": "b"}]
+    with pytest.raises(httpx.HTTPStatusError):
+        external._find_on_spotify(tracks)
+
+
 def test_sem_estilos_nao_recomenda(fake) -> None:
     assert external.recommendations({"bpm": 100.0}, [], k=3)["results"] == []
 

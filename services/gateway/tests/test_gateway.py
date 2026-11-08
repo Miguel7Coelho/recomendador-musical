@@ -8,7 +8,7 @@ from botocore.exceptions import ClientError
 from fastapi.testclient import TestClient
 
 import app.main as main
-from app import clients
+from app import clients, youtube
 
 SHA = "a" * 64
 FMA_ID = str(uuid.uuid4())
@@ -24,6 +24,7 @@ class Services:
                  ana_fails=False, external_ok=True, sep_status=202,
                  external_relaxed=None):  # fmt: skip
         self.external_relaxed = external_relaxed
+        self.youtube_status = 200
         self.sep_cached, self.ana_cached = sep_cached, ana_cached
         self.sep_left, self.ana_left = sep_polls, ana_polls
         self.ana_fails, self.external_ok, self.sep_status = ana_fails, external_ok, sep_status
@@ -33,6 +34,11 @@ class Services:
         self.calls.append(req)
         host, path = req.url.host, req.url.path
         analysis = {"features": FEATURES, "embeddings": {"effnet_clap": VEC, "clap": [0.0]}}
+        if host == "www.googleapis.com":
+            if self.youtube_status != 200:
+                return httpx.Response(self.youtube_status, json={"error": {}})
+            items = [{"id": {"videoId": "vid1"}}] if "Nada" not in req.url.params["q"] else []
+            return httpx.Response(200, json={"items": items})
         if host == "separation-api":
             if path == "/separate":
                 if self.sep_status == 400:
@@ -206,6 +212,46 @@ def test_pesquisa_sem_audio(setup) -> None:
     song = {"title": "Stronger", "artist": "Kanye West"}
     r = c.post("/songs/recommend", json=song).json()
     assert r["song"] == song and r["results"] == [{"spotify_id": "s1"}]
+
+
+def _youtube(c, title="Stronger"):
+    return c.get("/songs/youtube", params={"title": title, "artist": "Kanye"})
+
+
+def _youtube_calls(svc) -> int:
+    return sum(x.url.host == "www.googleapis.com" for x in svc.calls)
+
+
+def test_youtube_acha_e_guarda_o_video(setup, monkeypatch) -> None:
+    monkeypatch.setattr(youtube, "YOUTUBE_API_KEY", "k")
+    c, svc = setup()
+    assert _youtube(c).json() == {"video_id": "vid1"}
+    assert _youtube(c).json() == {"video_id": "vid1"}
+    assert _youtube_calls(svc) == 1
+
+
+def test_youtube_sem_resultado_tambem_fica_guardado(setup, monkeypatch) -> None:
+    monkeypatch.setattr(youtube, "YOUTUBE_API_KEY", "k")
+    c, svc = setup()
+    assert _youtube(c, "Nada").json() == {"video_id": None}
+    assert _youtube(c, "Nada").json() == {"video_id": None}
+    assert _youtube_calls(svc) == 1
+
+
+def test_youtube_sem_cota_para_de_chamar_e_nao_vaza_a_chave(setup, monkeypatch) -> None:
+    monkeypatch.setattr(youtube, "YOUTUBE_API_KEY", "SEGREDO")
+    c, svc = setup()
+    svc.youtube_status = 403
+    r = _youtube(c)
+    assert r.status_code == 503 and "SEGREDO" not in r.text
+    assert _youtube(c, "Outra").status_code == 503
+    assert _youtube_calls(svc) == 1
+
+
+def test_youtube_sem_chave_configurada(setup, monkeypatch) -> None:
+    monkeypatch.setattr(youtube, "YOUTUBE_API_KEY", "")
+    c, svc = setup()
+    assert _youtube(c).status_code == 503 and _youtube_calls(svc) == 0
 
 
 def test_erro_da_separacao_e_repassado(setup) -> None:

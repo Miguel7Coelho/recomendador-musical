@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "../api/client";
 import type { CatalogRecommendation, Features, Filters, JobResult } from "../api/types";
 import { formatBpm, formatRelaxed, formatScore } from "../lib/format";
-import { fromCatalog, fromSpotify, recArtist, recTitle, spotifyFirst, type Rec } from "../lib/recs";
+import { fromCatalog, fromExternal, recArtist, recTitle, spotifyFirst, type Rec } from "../lib/recs";
 import { useSession } from "../store";
 import { Drawer } from "./Drawer";
 import { DEFAULT_FILTERS, FilterForm } from "./FilterForm";
@@ -21,11 +21,15 @@ async function moreLike(rec: Rec, features: Seed): Promise<Similar> {
     const out = await api.moreLikeTrack(rec.track.id);
     return { seed, items: out.results.map(fromCatalog), relaxed: out.relaxed };
   }
+  if (rec.kind === "backup") {
+    const out = await api.recommendSong({ title: rec.track.title, artist: rec.track.artists[0] ?? "" });
+    return { seed, items: out.results.map(fromExternal), relaxed: [] };
+  }
   const { camelot, bpm, spotify_id, title, artists } = rec.track;
   const track = artists[0] ? { title, artist: artists[0] } : undefined;
   const { styles, genre_top } = features;
   const out = await api.moreLikeSpotify(spotify_id, { camelot, bpm, styles, genre_top, track });
-  return { seed, items: out.results.map(fromSpotify), relaxed: out.relaxed ?? [] };
+  return { seed, items: out.results.map(fromExternal), relaxed: out.relaxed ?? [] };
 }
 
 type ResultsProps = {
@@ -131,22 +135,27 @@ export function Results({ jobId, features, source, result }: ResultsProps) {
         {!similar && jobId && !result.spotify_error && result.spotify.length === 0 && (
           <Notice>O Spotify não teve sugestões para este estilo. Mostrando só o catálogo.</Notice>
         )}
+        {rec?.kind === "backup" && (
+          <Notice>Spotify indisponível no momento. Tocando pelo YouTube, sem tom e BPM desta faixa.</Notice>
+        )}
         {more.isError && <Notice tone="danger">{more.error.message}</Notice>}
         {noMatches && <Notice>Não encontramos faixas parecidas com esta.</Notice>}
 
         {rec ? (
           <article className="space-y-6 bg-surface p-6">
             <header>
-              <Label>{rec.kind === "catalog" ? "Catálogo FMA" : "Spotify"}</Label>
+              <Label>{{ catalog: "Catálogo FMA", spotify: "Spotify", backup: "YouTube" }[rec.kind]}</Label>
               <h2 className="mt-2 text-headline font-semibold break-words">{recTitle(rec)}</h2>
               <p className="mt-1 text-body">{recArtist(rec)}</p>
             </header>
 
-            <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
-              <Readout label="Tom" value={rec.track.camelot} />
-              <Readout label="BPM" value={formatBpm(rec.track.bpm)} />
-              {rec.kind === "catalog" && <Readout label="Afinidade" value={formatScore(rec.track.score)} />}
-            </div>
+            {rec.kind !== "backup" && (
+              <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
+                <Readout label="Tom" value={rec.track.camelot} />
+                <Readout label="BPM" value={formatBpm(rec.track.bpm)} />
+                {rec.kind === "catalog" && <Readout label="Afinidade" value={formatScore(rec.track.score)} />}
+              </div>
+            )}
 
             <p className="text-small">
               <span className="text-muted">Parecida porque: </span>
