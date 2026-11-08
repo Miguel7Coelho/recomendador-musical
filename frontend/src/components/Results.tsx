@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { api } from "../api/client";
 import type { CatalogRecommendation, Features, Filters, JobResult } from "../api/types";
-import { formatBpm, formatRelaxed, formatScore } from "../lib/format";
+import { formatBpm, formatScore } from "../lib/format";
 import { fromCatalog, fromExternal, recArtist, recTitle, spotifyFirst, type Rec } from "../lib/recs";
 import { useSession } from "../store";
 import { Drawer } from "./Drawer";
@@ -11,7 +11,7 @@ import { DEFAULT_FILTERS, FilterForm } from "./FilterForm";
 import { Player } from "./Player";
 import { Button, Label, Notice, Readout } from "./ui";
 
-type Similar = { seed: string; items: Rec[]; relaxed: string[] };
+type Similar = { seed: string; items: Rec[] };
 
 type Seed = Partial<Pick<Features, "styles" | "genre_top">>;
 
@@ -19,17 +19,17 @@ async function moreLike(rec: Rec, features: Seed): Promise<Similar> {
   const seed = recTitle(rec);
   if (rec.kind === "catalog") {
     const out = await api.moreLikeTrack(rec.track.id);
-    return { seed, items: out.results.map(fromCatalog), relaxed: out.relaxed };
+    return { seed, items: out.results.map(fromCatalog) };
   }
   if (rec.kind === "backup") {
     const out = await api.recommendSong({ title: rec.track.title, artist: rec.track.artists[0] ?? "" });
-    return { seed, items: out.results.map(fromExternal), relaxed: [] };
+    return { seed, items: out.results.map(fromExternal) };
   }
   const { camelot, bpm, spotify_id, title, artists } = rec.track;
   const track = artists[0] ? { title, artist: artists[0] } : undefined;
   const { styles, genre_top } = features;
   const out = await api.moreLikeSpotify(spotify_id, { camelot, bpm, styles, genre_top, track });
-  return { seed, items: out.results.map(fromExternal), relaxed: out.relaxed ?? [] };
+  return { seed, items: out.results.map(fromExternal) };
 }
 
 type ResultsProps = {
@@ -74,9 +74,6 @@ export function Results({ jobId, features, source, result }: ResultsProps) {
 
   const items = similar?.items ?? original;
   const rec = items[index];
-  const catalogRelaxed = similar?.relaxed ?? filtered?.relaxed ?? result.relaxed;
-  const spotifyRelaxed = similar?.relaxed ?? result.spotify_relaxed ?? [];
-  const relaxed = rec?.kind === "spotify" ? spotifyRelaxed : catalogRelaxed;
   const favorite = rec ? rec.key in favorites : false;
   const noMatches = more.isSuccess && more.data.items.length === 0;
   const filtersActive = JSON.stringify(filters) !== JSON.stringify(DEFAULT_FILTERS);
@@ -125,18 +122,11 @@ export function Results({ jobId, features, source, result }: ResultsProps) {
           </div>
         </div>
 
-        {relaxed.length > 0 && (
-          <Notice>Busca ampliada para achar faixas suficientes: {relaxed.map(formatRelaxed).join("; ")}.</Notice>
-        )}
         {!similar && filtered?.results.length === 0 && (
           <Notice>Nenhuma faixa do catálogo passou nesses filtros. Mostrando só o Spotify.</Notice>
         )}
-        {!similar && jobId && result.spotify_error && <Notice>{result.spotify_error}. Mostrando só o catálogo.</Notice>}
         {!similar && jobId && !result.spotify_error && result.spotify.length === 0 && (
           <Notice>O Spotify não teve sugestões para este estilo. Mostrando só o catálogo.</Notice>
-        )}
-        {rec?.kind === "backup" && (
-          <Notice>Spotify indisponível no momento. Tocando pelo YouTube, sem tom e BPM desta faixa.</Notice>
         )}
         {more.isError && <Notice tone="danger">{more.error.message}</Notice>}
         {noMatches && <Notice>Não encontramos faixas parecidas com esta.</Notice>}

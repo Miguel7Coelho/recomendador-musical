@@ -17,6 +17,10 @@ FEATURES = {"camelot": "11A", "bpm": 100.0, "styles": {"Pop---Synth-pop": 0.5}}
 VEC = [0.1] * 4
 
 
+def _video(video_id: str, title: str, channel: str) -> dict:
+    return {"id": {"videoId": video_id}, "snippet": {"title": title, "channelTitle": channel}}
+
+
 class Services:
     """Separação, análise, catálogo e spotify-api falsos. `plan` controla cada cenário."""
 
@@ -25,6 +29,7 @@ class Services:
                  external_relaxed=None):  # fmt: skip
         self.external_relaxed = external_relaxed
         self.youtube_status = 200
+        self.youtube_items = None
         self.sep_cached, self.ana_cached = sep_cached, ana_cached
         self.sep_left, self.ana_left = sep_polls, ana_polls
         self.ana_fails, self.external_ok, self.sep_status = ana_fails, external_ok, sep_status
@@ -37,7 +42,8 @@ class Services:
         if host == "www.googleapis.com":
             if self.youtube_status != 200:
                 return httpx.Response(self.youtube_status, json={"error": {}})
-            items = [{"id": {"videoId": "vid1"}}] if "Nada" not in req.url.params["q"] else []
+            found = [_video("vid1", "Stronger", "Kanye West - Topic")]
+            items = self.youtube_items or (found if "Nada" not in req.url.params["q"] else [])
             return httpx.Response(200, json={"items": items})
         if host == "separation-api":
             if path == "/separate":
@@ -228,6 +234,28 @@ def test_youtube_acha_e_guarda_o_video(setup, monkeypatch) -> None:
     assert _youtube(c).json() == {"video_id": "vid1"}
     assert _youtube(c).json() == {"video_id": "vid1"}
     assert _youtube_calls(svc) == 1
+
+
+def test_youtube_prefere_a_faixa_oficial_e_recusa_o_que_nao_e_musica(setup, monkeypatch) -> None:
+    monkeypatch.setattr(youtube, "YOUTUBE_API_KEY", "k")
+    c, svc = setup()
+    svc.youtube_items = [
+        _video("reacao", "REACTING to Kanye - Stronger", "Canal Qualquer"),
+        _video("outra", "Kanye West falando no programa", "TV"),
+        _video("fan", "Kanye - Stronger (letra)", "Fã"),
+        _video("oficial", "Stronger", "Kanye West - Topic"),
+    ]
+    assert _youtube(c).json() == {"video_id": "oficial"}
+
+
+def test_youtube_so_com_videos_comuns_nao_toca_nada(setup, monkeypatch) -> None:
+    monkeypatch.setattr(youtube, "YOUTUBE_API_KEY", "k")
+    c, svc = setup()
+    svc.youtube_items = [
+        _video("v", "Kanye Stronger cover", "Fã"),
+        _video("w", "Vlog do dia", "Kanye"),
+    ]
+    assert _youtube(c).json() == {"video_id": None}
 
 
 def test_youtube_sem_resultado_tambem_fica_guardado(setup, monkeypatch) -> None:
