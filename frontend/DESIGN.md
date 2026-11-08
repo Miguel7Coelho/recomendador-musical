@@ -67,6 +67,12 @@ vírgula (pt-BR).
 - Largura máxima do conteúdo: 1120 px. Abaixo de 1024 px, uma coluna.
 - Foco visível: contorno de 2 px em `accent-hover`. Nunca remover.
 
+## Ícone
+
+O botão do microfone como marca: disco em relevo, dois anéis de halo e, no centro, um círculo
+`accent` com três barras brancas de forma de onda. Até 48 px fica só o círculo com as barras, porque
+sombra e anéis desaparecem nesse tamanho.
+
 ## Evitar
 
 Bordas e divisórias, gradientes decorativos, segunda cor de destaque, vidro fosco, halo em algo que
