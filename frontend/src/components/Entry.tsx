@@ -3,7 +3,7 @@ import { useState, type DragEvent } from "react";
 
 import { api, ApiError } from "../api/client";
 import type { Job, Song } from "../api/types";
-import { MAX_RECORDING_S, useRecorder } from "../hooks/useRecorder";
+import { MAX_RECORDING_S, MIN_RECORDING_S, useRecorder } from "../hooks/useRecorder";
 import { SongField } from "./SongField";
 import { Button, Label, Notice } from "./ui";
 
@@ -21,7 +21,51 @@ function guessFromFilename(name: string): string {
   return base.includes(" - ") ? base.replace(/ - /g, " ").trim() : "";
 }
 
-type Pending = { audio: Blob; name: string; guess: string };
+type Pending = { audio: Blob; name: string; guess: string; label?: string };
+
+type RecordingPanelProps = {
+  elapsed: number;
+  level: number;
+  silent: boolean;
+  canStop: boolean;
+  onStop: () => void;
+  onCancel: () => void;
+};
+
+function RecordingPanel({ elapsed, level, silent, canStop, onStop, onCancel }: RecordingPanelProps) {
+  return (
+    <div className="mt-8 space-y-5 border border-danger bg-surface p-6">
+      <div className="flex items-center justify-between gap-4">
+        <p className="flex items-center gap-3 font-medium">
+          <span className="size-3 rounded-full bg-danger motion-safe:animate-pulse" aria-hidden />
+          Gravando
+        </p>
+        <span className="font-mono text-small tabular-nums" role="timer">
+          {Math.floor(elapsed)} / {MAX_RECORDING_S} s
+        </span>
+      </div>
+      <div>
+        <Label>Tempo</Label>
+        <div className="mt-2 h-1 bg-raised">
+          <div className="h-full bg-accent" style={{ width: `${(elapsed / MAX_RECORDING_S) * 100}%` }} />
+        </div>
+      </div>
+      <div>
+        <Label>Som captado</Label>
+        <div className="mt-2 h-3 bg-raised">
+          <div className="h-full bg-danger transition-[width] duration-100" style={{ width: `${Math.min(level * 400, 100)}%` }} />
+        </div>
+      </div>
+      {silent && <p className="text-small text-danger">Não estamos captando som. Confira o microfone.</p>}
+      <div className="flex flex-wrap items-center gap-3">
+        <Button variant="primary" onClick={onStop} disabled={!canStop}>
+          {canStop ? "Parar e buscar" : `Mínimo de ${MIN_RECORDING_S} s`}
+        </Button>
+        <Button onClick={onCancel}>Cancelar</Button>
+      </div>
+    </div>
+  );
+}
 
 type EntryProps = { onStarted: (job: Job) => void; onSearch: (song: Song) => void };
 
@@ -41,7 +85,11 @@ export function Entry({ onStarted, onSearch }: EntryProps) {
     setPending(next);
   }
 
-  const recorder = useRecorder((audio) => choose({ audio, name: "gravacao.webm", guess: "" }));
+  const recorder = useRecorder((audio) => {
+    const recording = { audio, name: "gravacao.webm", guess: "", label: "Gravação do microfone" };
+    choose(recording);
+    upload.mutate(recording); // parar a gravação já é o pedido de busca
+  });
 
   function pick(file: File | undefined) {
     if (!file) return;
@@ -74,11 +122,20 @@ export function Entry({ onStarted, onSearch }: EntryProps) {
         Analisamos tom, andamento, estilo e voz, e sugerimos faixas parecidas, uma por vez.
       </p>
 
-      {pending ? (
+      {recorder.recording ? (
+        <RecordingPanel
+          elapsed={recorder.elapsed}
+          level={recorder.level}
+          silent={recorder.silent}
+          canStop={recorder.canStop}
+          onStop={recorder.stop}
+          onCancel={recorder.cancel}
+        />
+      ) : pending ? (
         <div className="mt-8 flex items-center justify-between gap-4 bg-surface p-6">
           <div className="min-w-0">
             <Label>Áudio</Label>
-            <p className="mt-1 break-words">{pending.name}</p>
+            <p className="mt-1 break-words">{pending.label ?? pending.name}</p>
           </div>
           <Button onClick={() => setPending(null)} disabled={upload.isPending}>
             Trocar
@@ -112,16 +169,7 @@ export function Entry({ onStarted, onSearch }: EntryProps) {
       )}
 
       <div className="mt-4 flex items-center gap-4">
-        {recorder.recording ? (
-          <>
-            <Button variant="primary" onClick={recorder.stop} disabled={!recorder.canStop}>
-              Parar gravação
-            </Button>
-            <span className="font-mono text-small tabular-nums" role="timer">
-              <Label>Gravando</Label> {Math.floor(recorder.elapsed)} / {MAX_RECORDING_S} s
-            </span>
-          </>
-        ) : (
+        {!recorder.recording && (
           <>
             <Button onClick={recorder.start} disabled={upload.isPending}>
               Gravar pelo microfone

@@ -1,3 +1,4 @@
+import logging
 import re
 from uuid import UUID
 
@@ -32,6 +33,7 @@ SESSION_COOKIE = "session"
 SESSION_MAX_AGE_S = 30 * 24 * 3600
 BYTE_RANGE = re.compile(r"bytes=(\d+-\d*|-\d+)")
 
+received = logging.getLogger("uvicorn.error")  # o único logger que o uvicorn já exibe
 app = FastAPI(title=SERVICE)
 
 
@@ -67,6 +69,7 @@ def analyze(
     track = {"title": title, "artist": artist} if title and artist else None
     job = jobs.advance(jobs.new(separation, track))
     jobs.save(job)
+    received.info("Áudio recebido: %s, %s bytes, job %s", file.filename, file.size, job["id"])
     return jobs.view(job)
 
 
