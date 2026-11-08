@@ -69,9 +69,8 @@ class RecommendIn(RecommendOptions):
 
 class ExternalIn(BaseModel):
     features: dict
-    seed_spotify_ids: list[str] = Field([], max_length=5)  # vazio: sementes pelo estilo
+    exclude_spotify_ids: list[str] = Field([], max_length=50)
     k: int = Field(10, ge=1, le=40)
-    key: Literal["exact", "compatible", "off"] = "compatible"
 
 
 @app.get("/health")
@@ -154,8 +153,9 @@ def recommend_by_track(track_id: UUID, opts: RecommendOptions | None = None) -> 
 
 @app.post("/recommend/external")
 def recommend_external(req: ExternalIn) -> dict:
-    """Faixas do Spotify via ReccoBeats, filtradas e ordenadas por tom e BPM."""
+    """Faixas do Spotify do mesmo gênero (Last.fm), na faixa de andamento e priorizando o tom."""
     try:
-        return external.recommendations(req.features, req.seed_spotify_ids, req.k, req.key)
+        return external.recommendations(req.features, req.exclude_spotify_ids, req.k)
     except httpx.HTTPError as e:
-        raise HTTPException(502, f"ReccoBeats ou Spotify indisponível: {e}") from e
+        # O texto do erro não vai na resposta: a URL do Last.fm contém a chave da API.
+        raise HTTPException(502, "Last.fm, Spotify ou ReccoBeats indisponível") from e

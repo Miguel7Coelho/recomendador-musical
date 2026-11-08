@@ -100,9 +100,9 @@ async def more_like_catalog_track(track_id: UUID, request: Request) -> dict:
 
 @app.post("/recommend/spotify/{spotify_id}")
 async def more_like_spotify_track(spotify_id: str, request: Request) -> dict:
-    """Mais parecidas com uma faixa do Spotify: ela vira a semente da ReccoBeats."""
+    """Mais parecidas com uma faixa do Spotify, sem repetir a própria faixa."""
     features = await request.json() if await request.body() else {}
-    body = {"features": features, "seed_spotify_ids": [spotify_id]}
+    body = {"features": features, "exclude_spotify_ids": [spotify_id]}
     return _ok(clients.http().post(f"{CATALOG_URL}/recommend/external", json=body))
 
 

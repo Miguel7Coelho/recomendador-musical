@@ -1,20 +1,30 @@
-"""Candidatas do Spotify via ReccoBeats (faixas que tocam no Spotify, sem áudio para analisarmos).
+"""Candidatas do Spotify escolhidas por gênero (sem áudio para analisarmos).
 
-A ReccoBeats precisa de faixas-semente; o tom e o andamento das recomendações vêm do
-/audio-features dela. Sem embedding, gênero ou voz: a ordenação usa só tom e BPM.
+O gênero vem das etiquetas do Last.fm, a faixa tocável do Spotify e o tom e o andamento da
+ReccoBeats. Gênero e andamento eliminam; tom compatível só melhora a posição.
 """
 
 import os
 import re
-from functools import cache
+from concurrent.futures import ThreadPoolExecutor
+from functools import cache, lru_cache
 
 import httpx
 
-from app import recommend
+from app import lastfm, recommend
 
 RECCOBEATS = "https://api.reccobeats.com/v1"
 SPOTIFY_API = os.getenv("SPOTIFY_API_URL", "http://spotify-api:8000")
-POOL = 40
+
+MAX_STYLES = 4
+MIN_STYLE_PROB = 0.05  # abaixo disso o estilo é ruído do classificador
+TAG_POOL = 50  # faixas pedidas por etiqueta
+POOL = 80  # faixas procuradas no Spotify por consulta
+MATCH_WORKERS = 6
+BPM_TOLERANCE = 0.10  # dobro e metade do andamento também contam
+MAX_PER_ARTIST = 2
+SCORE_WEIGHTS = {"style": 0.60, "bpm": 0.25, "key": 0.15}
+
 # Acima disso a faixa é quase só fala (definição do Spotify para speechiness): audiolivros e
 # podcasts aparecem como "faixas" no catálogo do Spotify e não servem como recomendação musical.
 MAX_SPEECHINESS = 0.66
@@ -54,31 +64,64 @@ def _spotify_id(href: str) -> str:
     return href.rstrip("/").rsplit("/", 1)[-1]
 
 
-def seeds_for(features: dict) -> list[str]:
-    """Faixas do Spotify do mesmo estilo da consulta (o primeiro estilo que render resultado)."""
-    names = [s.split("---")[-1] for s in (features.get("styles") or {})]
-    if features.get("genre_top"):
-        names.append(features["genre_top"])
-    for name in names:
-        r = client().get(f"{SPOTIFY_API}/search/genre", params={"style": name, "limit": 10})
-        ids = r.raise_for_status().json()["ids"]
-        feats = _recco_features(ids) if ids else {}
-        # A semente precisa existir na ReccoBeats (senão ela responde 400) e ser música.
-        music = [i for i in ids if i in feats and not _is_speech(feats[i])][:5]
-        if music:
-            return music
-    return []
+def style_tags(features: dict) -> dict[str, float]:
+    """Etiquetas a procurar e seu peso. Só estilos do gênero principal, para que um palpite
+    fraco do classificador não traga folk ou latina para uma faixa de hip-hop."""
+    genre = features.get("genre_top")
+    styles = sorted((features.get("styles") or {}).items(), key=lambda s: -s[1])
+    kept = [
+        (style, prob)
+        for style, prob in styles
+        if prob >= MIN_STYLE_PROB and (not genre or style.split("---")[0] == genre)
+    ][:MAX_STYLES]
+    tags = {lastfm.tag_for(style.split("---")[-1]): prob for style, prob in kept}
+    if genre:  # o gênero amplo só completa a lista, depois dos estilos
+        tags.setdefault(lastfm.tag_for(genre), min(tags.values(), default=0.1) / 2)
+    return tags
 
 
-def _is_speech(features: dict | None) -> bool:
-    return bool(features) and (features.get("speechiness") or 0) > MAX_SPEECHINESS
+def _tagged_tracks(tags: dict[str, float]) -> list[dict]:
+    """Faixas das etiquetas; a que aparece em várias soma o peso de todas."""
+    found: dict[tuple[str, str], dict] = {}
+    for tag, weight in tags.items():
+        for position, (title, artist) in enumerate(lastfm.top_tracks(tag, TAG_POOL)):
+            key = (title.casefold(), artist.casefold())
+            track = found.setdefault(
+                key, {"title": title, "artist": artist, "weight": 0.0, "tags": [], "order": 1e9}
+            )
+            track["weight"] += weight
+            track["tags"].append(tag)
+            track["order"] = min(track["order"], position)
+    return sorted(found.values(), key=lambda t: (-t["weight"], t["order"]))[:POOL]
 
 
-def _recco_recommendations(seeds: list[str]) -> list[dict]:
-    r = client().get(
-        f"{RECCOBEATS}/track/recommendation", params={"seeds": seeds[:5], "size": POOL}
-    )
-    return r.raise_for_status().json()["content"]
+@lru_cache(maxsize=4096)
+def _spotify_match(title: str, artist: str) -> dict | None:
+    body = {"title": title, "artist": artist}
+    r = client().post(f"{SPOTIFY_API}/match", json=body).raise_for_status()
+    return r.json()["match"]
+
+
+def _find_on_spotify(tracks: list[dict]) -> list[tuple[dict, dict]]:
+    """Pares (faixa, correspondência). Uma busca que falha só perde aquela faixa, exceto se
+    todas falharem: aí o Spotify está fora e quem chamou precisa saber."""
+
+    def lookup(track: dict) -> dict | None | Exception:
+        try:
+            return _spotify_match(track["title"], track["artist"])
+        except httpx.HTTPError as e:
+            return e
+
+    with ThreadPoolExecutor(MATCH_WORKERS) as pool:
+        answers = list(pool.map(lookup, tracks))
+    errors = [a for a in answers if isinstance(a, Exception)]
+    if tracks and len(errors) == len(tracks):
+        raise errors[0]
+    return [(t, a) for t, a in zip(tracks, answers) if isinstance(a, dict)]
+
+
+def _is_speech(features: dict) -> bool:
+    return (features.get("speechiness") or 0) > MAX_SPEECHINESS
 
 
 def _recco_features(spotify_ids: list[str]) -> dict[str, dict]:
@@ -90,61 +133,77 @@ def _recco_features(spotify_ids: list[str]) -> dict[str, dict]:
     return out
 
 
-def recommendations(features: dict, seed_ids: list[str], k: int, key_level: str) -> dict:
-    seeds = seed_ids or seeds_for(features)
-    if not seeds:
-        return {"results": [], "seeds": [], "relaxed": []}
+def _candidate(track: dict, match: dict, feats: dict, total_weight: float, query: dict) -> dict:
+    camelot = camelot_from_pitch(feats.get("key"), feats.get("mode"))
+    key = recommend.key_match(query.get("camelot"), camelot)
+    q_bpm = query.get("bpm")
+    distance = recommend.bpm_ratio(feats["tempo"], q_bpm) if q_bpm else 0.0
+    parts = {
+        "style": min(track["weight"] / total_weight, 1.0),
+        "bpm": max(1 - distance / BPM_TOLERANCE, 0.0),
+        "key": key,
+    }
+    why = [track["tags"][0]]
+    if q_bpm:
+        why.append(f"{feats['tempo']:.0f} vs. {q_bpm:.0f} BPM")
+    if key:
+        why.append(f"{'mesmo tom' if key == 1.0 else 'tom compatível'} {camelot}")
+    return {
+        "source": "lastfm",
+        "spotify_id": match["spotify_id"],
+        "title": match["title"],
+        "artists": match["artists"],
+        "url": match["url"],
+        "camelot": camelot,
+        "bpm": feats["tempo"],
+        "explanation": " · ".join(why),
+        "score": round(sum(SCORE_WEIGHTS[name] * value for name, value in parts.items()), 4),
+        "_distance": distance,
+        "_order": track["order"],
+    }
 
-    tracks = [t for t in _recco_recommendations(seeds) if _spotify_id(t["href"]) not in seeds]
-    feats = _recco_features([_spotify_id(t["href"]) for t in tracks])
-    cands = []
-    seen_audio = set()
-    for order, t in enumerate(tracks):
-        sid = _spotify_id(t["href"])
-        f = feats.get(sid, {})
-        if _is_speech(f) or NOISE_TITLE.search(t["trackTitle"]):
-            continue
-        audio = tuple(f.get(name) for name in AUDIO_FIELDS)
-        if None not in audio:
-            if audio in seen_audio:
-                continue
-            seen_audio.add(audio)
-        cands.append(
-            {
-                "source": "reccobeats",
-                "spotify_id": sid,
-                "title": t["trackTitle"],
-                "artists": [a["name"] for a in t["artists"]],
-                "url": t["href"],
-                "camelot": camelot_from_pitch(f.get("key"), f.get("mode")),
-                "bpm": f.get("tempo"),
-                "_order": order,
-            }
-        )
 
-    # Filtro de tom com relaxamento (compatível → sem filtro), como na cascata do catálogo.
-    q_key, relaxed = features.get("camelot"), []
-    levels = recommend.LADDER["key"][recommend.LADDER["key"].index(key_level) :]
-    for level in levels:
-        allowed = recommend.conditions(features, {"key": level, "genre": "off", "voice": "off"})
-        keys = allowed["keys"]
-        chosen = [c for c in cands if keys is None or c["camelot"] in keys]
-        if len(chosen) >= k or level == levels[-1]:
-            break
-    if level != key_level:
-        relaxed.append(f"key: {key_level} → {level}")
+def recommendations(features: dict, exclude_ids: list[str], k: int) -> dict:
+    tags = style_tags(features)
+    if not tags:
+        return {"results": [], "tags": [], "relaxed": []}
 
+    matches = [
+        (track, match)
+        for track, match in _find_on_spotify(_tagged_tracks(tags))
+        if match["spotify_id"] not in exclude_ids
+    ]
+    audio = _recco_features(list({m["spotify_id"] for _, m in matches}))
+    total_weight = sum(tags.values())
     q_bpm = features.get("bpm")
 
-    def sort_key(c: dict) -> tuple:
-        bpm = recommend.bpm_ratio(c["bpm"], q_bpm) if c["bpm"] and q_bpm else 1.0
-        return (-recommend.key_match(q_key, c["camelot"]), bpm, c["_order"])
+    cands = []
+    seen_ids, seen_audio = set(), set()
+    for track, match in matches:
+        sid = match["spotify_id"]
+        f = audio.get(sid)
+        if sid in seen_ids or not f or not f.get("tempo"):
+            continue  # sem andamento conhecido não dá para garantir que combina
+        seen_ids.add(sid)
+        if _is_speech(f) or NOISE_TITLE.search(match["title"]):
+            continue
+        if q_bpm and recommend.bpm_ratio(f["tempo"], q_bpm) > BPM_TOLERANCE:
+            continue
+        fingerprint = tuple(f.get(name) for name in AUDIO_FIELDS)
+        if None not in fingerprint:
+            if fingerprint in seen_audio:
+                continue
+            seen_audio.add(fingerprint)
+        cands.append(_candidate(track, match, f, total_weight, features))
 
-    results = []
-    for c in sorted(chosen, key=sort_key)[:k]:
-        comps = {"key": recommend.key_match(q_key, c["camelot"]), "voice": 0.0}
-        why = recommend.explain(features, {**c, "styles": None}, comps)
-        item = {name: v for name, v in c.items() if name != "_order"}
-        item["explanation"] = " · ".join(filter(None, [why, "via ReccoBeats"]))
-        results.append(item)
-    return {"results": results, "seeds": seeds, "relaxed": relaxed}
+    results: list[dict] = []
+    per_artist: dict[str, int] = {}
+    for c in sorted(cands, key=lambda c: (-c["score"], c["_distance"], c["_order"])):
+        lead = c["artists"][0].casefold()
+        if per_artist.get(lead, 0) >= MAX_PER_ARTIST:
+            continue
+        per_artist[lead] = per_artist.get(lead, 0) + 1
+        results.append({name: v for name, v in c.items() if not name.startswith("_")})
+        if len(results) == k:
+            break
+    return {"results": results, "tags": list(tags), "relaxed": []}

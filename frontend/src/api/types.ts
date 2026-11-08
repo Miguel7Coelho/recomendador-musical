@@ -52,7 +52,7 @@ export type CatalogTrack = {
 };
 
 export type SpotifyTrack = {
-  source: "reccobeats";
+  source: "lastfm";
   spotify_id: string;
   title: string;
   artists: string[];

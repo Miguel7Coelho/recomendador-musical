@@ -1,5 +1,6 @@
 import type {
   CatalogRecommendation,
+  Features,
   Job,
   Me,
   NewPlaylist,
@@ -58,7 +59,7 @@ export const api = {
 
   moreLikeTrack: (trackId: string, options?: RecommendOptions) =>
     postJson<CatalogRecommendation>(`/recommend/track/${trackId}`, options),
-  moreLikeSpotify: (spotifyId: string, seed: { camelot: string; bpm: number }) =>
+  moreLikeSpotify: (spotifyId: string, seed: Pick<Features, "camelot" | "bpm" | "styles" | "genre_top">) =>
     postJson<{ results: SpotifyTrack[]; relaxed?: string[] }>(`/recommend/spotify/${spotifyId}`, seed),
 
   matchOnSpotify: (trackId: string) =>

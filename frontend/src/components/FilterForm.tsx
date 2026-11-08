@@ -76,7 +76,7 @@ export function FilterForm({ value, pending, error, onApply }: FilterFormProps) 
       }}
     >
       <p className="text-small text-muted">
-        Valem para o catálogo. As sugestões do Spotify só têm tom e BPM e continuam iguais.
+        Valem para o catálogo. As sugestões do Spotify já vêm filtradas por gênero e BPM e continuam iguais.
       </p>
 
       <div>

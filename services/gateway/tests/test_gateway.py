@@ -301,7 +301,7 @@ def test_correspondencia_e_mais_parecidas(setup) -> None:
     r = c.post("/recommend/spotify/abc", json={"camelot": "8A", "bpm": 90}).json()
     assert r == {"results": [{"spotify_id": "s1"}]}
     sent = json.loads(next(x for x in svc.calls if x.url.path == "/recommend/external").content)
-    assert sent == {"features": {"camelot": "8A", "bpm": 90}, "seed_spotify_ids": ["abc"]}
+    assert sent == {"features": {"camelot": "8A", "bpm": 90}, "exclude_spotify_ids": ["abc"]}
 
 
 def test_servico_reiniciando_nao_perde_o_upload(setup, monkeypatch) -> None:

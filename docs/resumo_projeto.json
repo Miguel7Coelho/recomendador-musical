@@ -51,7 +51,7 @@
     "GET /jobs/{job_id}": "{job_id, status: separating|analyzing|searching|done|failed, sha, features?, result?, error?}; job expira em 2 h",
     "POST /jobs/{job_id}/recommend": "refaz a busca no catálogo com a análise guardada no job; corpo opcional RecommendOptions → {results, levels, relaxed, pool}; 404 job expirado, 409 análise não terminou, 503 catálogo fora; não refaz as faixas do Spotify",
     "POST /recommend/track/{track_id}": "mais parecidas com uma faixa do catálogo; corpo opcional RecommendOptions (filtros, k, pesos)",
-    "POST /recommend/spotify/{spotify_id}": "mais parecidas com uma faixa do Spotify; corpo {camelot, bpm}",
+    "POST /recommend/spotify/{spotify_id}": "mais parecidas com uma faixa do Spotify; corpo {camelot, bpm, styles, genre_top}",
     "GET /audio/track/{track_id}": "stream audio/wav do trecho da FMA (só source='fma')",
     "POST /tracks/{track_id}/spotify": "procura a mesma faixa no Spotify → {match | null}",
     "GET /auth/login": "redireciona ao Spotify; volta em FRONTEND_URL/?login=ok|erro|cancelado",
@@ -106,7 +106,7 @@
     },
     "result.spotify[]": {
       "campos": [
-        "source ('reccobeats')",
+        "source ('lastfm')",
         "spotify_id",
         "title",
         "artists[]",
@@ -115,7 +115,7 @@
         "bpm",
         "explanation"
       ],
-      "exemplo_explanation": "tom compatível 6B · 133 vs. 133 BPM · via ReccoBeats"
+      "exemplo_explanation": "g-funk · 95 vs. 92 BPM · tom compatível 9A"
     },
     "result.relaxed": "lista de afrouxamentos aplicados, ex.: ['key: exact → compatible']",
     "result.spotify_relaxed": "afrouxamentos aplicados às faixas do Spotify, ex.: ['key: compatible → off']",
@@ -166,7 +166,7 @@
     },
     {
       "tema": "Fonte das recomendações",
-      "decisao": "híbrido: catálogo FMA (análise completa, áudio CC próprio) + Spotify via ReccoBeats (só tom e BPM)",
+      "decisao": "híbrido: catálogo FMA (análise completa, áudio CC próprio) + Spotify escolhido por gênero no Last.fm, com tom e BPM da ReccoBeats",
       "motivo": "FMA quase não está no Spotify; faixas do Spotify não podem ser analisadas (sem áudio)"
     },
     {
@@ -175,9 +175,9 @@
       "motivo": "licenças Creative Commons; várias são NonCommercial (ok para TCC, exige crédito)"
     },
     {
-      "tema": "Sementes ReccoBeats",
-      "decisao": "busca por estilo no Spotify; semente só se existir na ReccoBeats e tiver speechiness ≤ 0,66",
-      "motivo": "faixas desconhecidas geram 400; audiolivros/podcasts poluíam as recomendações"
+      "tema": "Candidatas do Spotify",
+      "decisao": "faixas das etiquetas do Last.fm para os estilos do gênero principal, localizadas no Spotify; elimina por gênero e BPM (±10%, dobro/metade), tom só melhora a posição (pesos 0,60 estilo / 0,25 BPM / 0,15 tom)",
+      "motivo": "a ReccoBeats não tem gênero (semente 'Still D.R.E.' trouxe Karol G e Taylor Swift) e o Spotify não devolve gêneros de artista no Development Mode (0 de 23 artistas)"
     },
     {
       "tema": "Qualidade das faixas da ReccoBeats",
@@ -204,10 +204,10 @@
     "Beats instrumentais: o rótulo de gênero do Discogs-400 é fraco (ex.: R&B instrumental → Electronic/Downtempo)",
     "Catálogo pequeno (399 faixas): a cascata quase sempre relaxa o filtro de tom",
     "BPM não entra na pontuação; só filtra quando o usuário define uma faixa de andamento",
-    "Recomendações do Spotify não têm embedding, gênero nem voz (só tom e BPM da ReccoBeats)",
+    "Recomendações do Spotify não têm embedding nem voz; o gênero vem de etiquetas do Last.fm, que variam de qualidade (ex.: chopped and screwed traz faixas fora do estilo) e dependem do estilo detectado na faixa enviada",
     "Poucas faixas da FMA têm correspondente no Spotify (para exportar na playlist)",
     "Spotify em Development Mode: até 5 usuários cadastrados; busca com no máximo 10 resultados",
-    "Limites da ReccoBeats não publicados; 429 é tratado como indisponível",
+    "Limites da ReccoBeats não publicados; 429 é tratado como indisponível. Só entram faixas que a ReccoBeats conhece, pois sem BPM não há como filtrar",
     "Possível erro de oitava no BPM (ex.: 133 pode ser 66,5) — falta confirmar com o tom/BPM reais",
     "Primeira análise lenta (download de modelos); depois ~20 s sem cache e ~0,1 s com cache"
   ],

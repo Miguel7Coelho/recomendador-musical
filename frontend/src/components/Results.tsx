@@ -14,14 +14,15 @@ import { Button, Label, Notice, Readout } from "./ui";
 
 type Similar = { seed: string; items: Rec[]; relaxed: string[] };
 
-async function moreLike(rec: Rec): Promise<Similar> {
+async function moreLike(rec: Rec, features: Features): Promise<Similar> {
   const seed = recTitle(rec);
   if (rec.kind === "catalog") {
     const out = await api.moreLikeTrack(rec.track.id);
     return { seed, items: out.results.map(fromCatalog), relaxed: out.relaxed };
   }
   const { camelot, bpm, spotify_id } = rec.track;
-  const out = await api.moreLikeSpotify(spotify_id, { camelot, bpm });
+  const { styles, genre_top } = features;
+  const out = await api.moreLikeSpotify(spotify_id, { camelot, bpm, styles, genre_top });
   return { seed, items: out.results.map(fromSpotify), relaxed: out.relaxed ?? [] };
 }
 
@@ -39,7 +40,7 @@ export function Results({ jobId, features, result }: ResultsProps) {
   const original = useMemo(() => catalogFirst(catalog, result.spotify), [catalog, result.spotify]);
 
   const more = useMutation({
-    mutationFn: moreLike,
+    mutationFn: (rec: Rec) => moreLike(rec, features),
     onSuccess: (out) => {
       if (out.items.length === 0) return;
       setSimilar(out);
