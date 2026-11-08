@@ -93,3 +93,86 @@ def test_busca_usa_indice_hnsw_do_modelo_combinado(conn) -> None:
     ).fetchall()
     assert "track_embeddings_effnet_clap_hnsw" in str(plan)
     assert len(db.similar(conn, "effnet_clap", [1.0] + [0.0] * 1791, k=5, exclude_id=None)) == 5
+
+
+def _features(camelot, styles, genre, presence, gender=None, conf=None, bpm=100.0):
+    return {
+        "camelot": camelot, "bpm": bpm, "styles": styles, "genre_top": genre,
+        "vocal_presence": presence, "vocal_gender": gender, "vocal_confidence": conf,
+    }  # fmt: skip
+
+
+@pytest.fixture
+def catalogo(conn):
+    """Seis faixas com atributos escolhidos para exercitar cada filtro."""
+    pop = {"Pop---Synth-pop": 0.6, "Electronic---House": 0.2}
+    rock = {"Rock---Punk": 0.7}
+    rows = {
+        "exata": _features("11A", pop, "Pop", 0.9, "female", 0.9, bpm=102),
+        "vizinha": _features("12A", pop, "Pop", 0.9, "female", 0.8),
+        "masculina": _features("11A", pop, "Pop", 0.9, "male", 0.9),
+        "instrumental": _features("11A", pop, "Pop", 0.1),
+        "rock": _features("11A", rock, "Rock", 0.9, "female", 0.9, bpm=51),
+        "longe": _features("5B", rock, "Rock", 0.1, bpm=170),
+    }
+    ids = {}
+    for i, (name, feats) in enumerate(rows.items()):
+        vec = [1.0, i * 0.1, 0.0]
+        ids[name] = db.insert_track(conn, track(str(i), "x"), feats, {"m": vec})
+    return ids
+
+
+def _names(ids, rows):
+    inv = {v: k for k, v in ids.items()}
+    return {inv[r["id"]] for r in rows}
+
+
+def test_filtros_da_cascata(conn, catalogo) -> None:
+    q = [1.0, 0.0, 0.0]
+    get = lambda cond, **kw: _names(catalogo, db.candidates(conn, "m", q, cond, **kw))  # noqa: E731
+    none = {"keys": None, "styles": None, "genre": None, "voice": None}
+
+    assert get(none) == set(catalogo)
+    assert get({**none, "keys": ["11A"]}) == {"exata", "masculina", "instrumental", "rock"}
+    assert get({**none, "keys": ["10A", "11A", "11B", "12A"]}) >= {"vizinha"}
+    assert get({**none, "styles": ["Pop---Synth-pop"]}) == {
+        "exata", "vizinha", "masculina", "instrumental"
+    }  # fmt: skip
+    assert get({**none, "genre": "Rock"}) == {"rock", "longe"}
+    assert get({**none, "voice": {"vocal": True, "gender": "female"}}) == {
+        "exata", "vizinha", "rock"
+    }  # fmt: skip
+    assert get({**none, "voice": {"vocal": False}}) == {"instrumental", "longe"}
+    # Faixa 101–106: 102 entra direto e 51 entra pelo dobro; 100 e 170 (85 na metade) ficam fora.
+    assert get(none, bpm=(101, 106)) == {"exata", "rock"}
+    assert get(none, exclude=[catalogo["exata"]]) == set(catalogo) - {"exata"}
+
+
+def test_track_query(conn, catalogo) -> None:
+    q = db.track_query(conn, catalogo["exata"], "m")
+    assert q["camelot"] == "11A" and q["vec"] == [1.0, 0.0, 0.0]
+    assert db.track_query(conn, catalogo["exata"], "outro_modelo") is None
+
+
+def test_endpoint_mais_parecidas_com_esta(conn, catalogo) -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    c = TestClient(app)
+    body = {"model": "m", "min_candidates": 2}
+    r = c.post(f"/recommend/track/{catalogo['exata']}", json=body).json()
+    names = [_names(catalogo, [x]).pop() for x in r["results"]]
+    # Tom exato + synth-pop + vocal feminino: só sobra "rock" (estilo diferente) → relaxa o tom.
+    assert "exata" not in names
+    assert names[0] == "vizinha"
+    assert r["relaxed"] and r["levels"]["key"] != "exact"
+    assert r["results"][0]["explanation"].startswith("tom compatível 12A · synth-pop · vocal")
+
+    travado = {**body, "filters": {"locked": ["key"]}}
+    r = c.post(f"/recommend/track/{catalogo['exata']}", json=travado).json()
+    assert all(x["camelot"] == "11A" for x in r["results"])  # tom travado nunca relaxa
+
+    import uuid
+
+    assert c.post(f"/recommend/track/{uuid.uuid4()}", json=body).status_code == 404

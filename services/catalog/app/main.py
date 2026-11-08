@@ -1,9 +1,10 @@
 from typing import Literal
+from uuid import UUID
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
-from app import db
+from app import db, recommend
 
 SERVICE = "catalog"
 
@@ -28,6 +29,39 @@ class SimilarIn(BaseModel):
     vec: list[float] = Field(min_length=1)
     k: int = Field(10, ge=1, le=100)
     exclude_id: str | None = None
+
+
+class Filters(BaseModel):
+    key: Literal["exact", "compatible", "off"] = "exact"
+    genre: Literal["style", "genre", "off"] = "style"
+    voice: Literal["on", "off"] = "on"
+    locked: list[Literal["key", "genre", "voice"]] = []  # nunca relaxados
+    bpm_min: float | None = None
+    bpm_max: float | None = None
+    year_min: int | None = None
+    year_max: int | None = None
+
+
+class RecommendOptions(BaseModel):
+    model: str = "effnet_clap"
+    filters: Filters = Filters()
+    k: int = Field(10, ge=1, le=50)
+    min_candidates: int = Field(20, ge=1, le=200)
+    pool: int = Field(200, ge=10, le=1000)
+    exclude_ids: list[UUID] = []
+    weights: dict[str, float] | None = None  # para a avaliação e o ajuste de pesos
+
+    @field_validator("weights")
+    @classmethod
+    def _weights(cls, w: dict[str, float] | None) -> dict[str, float] | None:
+        if w is not None and set(w) != set(recommend.WEIGHTS):
+            raise ValueError(f"pesos precisam ter exatamente {sorted(recommend.WEIGHTS)}")
+        return w
+
+
+class RecommendIn(RecommendOptions):
+    vec: list[float] = Field(min_length=1)
+    features: dict
 
 
 @app.get("/health")
@@ -59,3 +93,41 @@ def similar(req: SimilarIn) -> dict:
     with db.connect() as conn:
         results = db.similar(conn, req.model, req.vec, req.k, req.exclude_id)
     return {"results": results}
+
+
+def _recommend(
+    opts: RecommendOptions, vec: list[float], features: dict, exclude: list[str]
+) -> dict:
+    f = opts.filters
+    bpm = (f.bpm_min or 0.0, f.bpm_max or 1000.0) if (f.bpm_min or f.bpm_max) else None
+    year = (f.year_min or 0, f.year_max or 9999) if (f.year_min or f.year_max) else None
+    start = {"key": f.key, "genre": f.genre, "voice": f.voice}
+    with db.connect() as conn:
+
+        def fetch(cond: dict) -> list[dict]:
+            return db.candidates(
+                conn, opts.model, vec, cond, bpm=bpm, year=year, exclude=exclude, pool=opts.pool
+            )
+
+        cands, levels, relaxed = recommend.run_cascade(
+            features, start, set(f.locked), fetch, opts.min_candidates
+        )
+    ranked = recommend.rank(features, cands, opts.weights or recommend.WEIGHTS)
+    return {"results": ranked[: opts.k], "levels": levels, "relaxed": relaxed, "pool": len(cands)}
+
+
+@app.post("/recommend")
+def recommend_by_features(req: RecommendIn) -> dict:
+    return _recommend(req, req.vec, req.features, [str(i) for i in req.exclude_ids])
+
+
+@app.post("/recommend/track/{track_id}")
+def recommend_by_track(track_id: UUID, opts: RecommendOptions | None = None) -> dict:
+    """Mais parecidas com esta: usa a própria faixa do catálogo como consulta."""
+    opts = opts or RecommendOptions()
+    with db.connect() as conn:
+        query = db.track_query(conn, str(track_id), opts.model)
+    if query is None:
+        raise HTTPException(404, "Faixa sem embedding desse modelo no catálogo")
+    exclude = [str(track_id), *(str(i) for i in opts.exclude_ids)]
+    return _recommend(opts, query.pop("vec"), query, exclude)
