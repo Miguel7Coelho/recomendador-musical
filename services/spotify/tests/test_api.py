@@ -1,7 +1,9 @@
+import json
 from urllib.parse import parse_qs, urlparse
 
 import pytest
 from fastapi.testclient import TestClient
+from tests.conftest import track
 
 import app.main as main
 
@@ -11,6 +13,9 @@ def client(fake, monkeypatch):
     states, saved = {}, {}
     monkeypatch.setattr(main, "state_put", lambda s, v: states.__setitem__(s, v))
     monkeypatch.setattr(main, "state_pop", lambda s: states.pop(s, None))
+    cache = {}
+    monkeypatch.setattr(main, "match_get", cache.get)
+    monkeypatch.setattr(main, "match_put", lambda k, v: cache.__setitem__(k, json.dumps(v)))
     monkeypatch.setattr(main.sessions, "save", lambda sid, uid, name, t: saved.update({sid: uid}))
     monkeypatch.setattr(main.sessions, "access_token", lambda sid: "tok" if sid in saved else None)
     c = TestClient(main.app)
@@ -38,6 +43,44 @@ def test_playlist_exige_login(client) -> None:
     client.saved["sess"] = "miguel"
     r = client.post("/playlists", json=body, headers={"X-Session": "sess"})
     assert r.json() == {"id": "pl1", "url": "https://open.spotify.com/x"}
+
+
+def _searches(fake) -> int:
+    return sum(c.url.path == "/v1/search" for c in fake.calls)
+
+
+def test_match_guardado_nao_busca_de_novo(client, fake) -> None:
+    fake.search_results["track:Food artist:AWOL"] = [track("t1", "Food", "AWOL")]
+    body = {"title": "Food", "artist": "AWOL"}
+    first = client.post("/match", json=body).json()
+    assert first["match"]["spotify_id"] == "t1"
+    assert client.post("/match", json=body).json() == first
+    assert _searches(fake) == 1
+
+
+def test_match_inexistente_tambem_fica_guardado(client, fake) -> None:
+    body = {"title": "Nada", "artist": "Ninguem"}
+    assert client.post("/match", json=body).json() == {"match": None}
+    assert client.post("/match", json=body).json() == {"match": None}
+    assert _searches(fake) == 1
+
+
+def test_bloqueio_do_spotify_para_de_chamar(client, fake) -> None:
+    fake.rate_limited = True
+    r = client.post("/match", json={"title": "Food", "artist": "AWOL"})
+    assert r.status_code == 429 and r.headers["retry-after"] == "120"
+    r = client.post("/match", json={"title": "Outra", "artist": "AWOL"})
+    assert r.status_code == 429 and _searches(fake) == 1  # não insistiu
+
+
+def test_bloqueio_nao_e_guardado_como_sem_resultado(client, fake, monkeypatch) -> None:
+    fake.rate_limited = True
+    body = {"title": "Food", "artist": "AWOL"}
+    assert client.post("/match", json=body).status_code == 429
+    fake.rate_limited = False
+    monkeypatch.setitem(main.spotify._blocked, "until", 0.0)
+    fake.search_results["track:Food artist:AWOL"] = [track("t1", "Food", "AWOL")]
+    assert client.post("/match", json=body).json()["match"]["spotify_id"] == "t1"
 
 
 def test_validacao(client) -> None:

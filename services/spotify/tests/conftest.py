@@ -12,6 +12,7 @@ class FakeSpotify:
     def __init__(self):
         self.calls: list[httpx.Request] = []
         self.search_results: dict[str, list[dict]] = {}
+        self.rate_limited = False
 
     def __call__(self, req: httpx.Request) -> httpx.Response:
         self.calls.append(req)
@@ -33,6 +34,8 @@ class FakeSpotify:
         if path.startswith("/v1/playlists/") and path.endswith("/items"):
             return httpx.Response(201, json={"snapshot_id": "s"})
         if path == "/v1/search":
+            if self.rate_limited:
+                return httpx.Response(429, headers={"Retry-After": "120"})
             items = self.search_results.get(req.url.params["q"], [])
             return httpx.Response(200, json={"tracks": {"items": items}})
         return httpx.Response(404)
@@ -46,6 +49,7 @@ def fake(monkeypatch):
     f = FakeSpotify()
     monkeypatch.setattr(spotify, "client", lambda: httpx.Client(transport=httpx.MockTransport(f)))
     spotify._app_token.update(value=None, expires=0.0)
+    spotify._blocked["until"] = 0.0
     return f
 
 

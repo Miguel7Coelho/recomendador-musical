@@ -1,8 +1,10 @@
+import json
 import secrets
 from functools import cache
 
 import redis
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app import sessions, spotify
@@ -10,8 +12,17 @@ from app.config import REDIS_URL
 
 SERVICE = "spotify"
 PKCE_TTL_S = 600
+# A busca por faixa é o que consome o limite do Spotify; o Redis guarda as respostas entre deploys.
+MATCH_TTL_S = 30 * 24 * 3600
+NO_MATCH_TTL_S = 7 * 24 * 3600
 
 app = FastAPI(title=SERVICE)
+
+
+@app.exception_handler(spotify.RateLimited)
+def rate_limited(_: Request, e: spotify.RateLimited) -> JSONResponse:
+    headers = {"Retry-After": str(e.retry_after)}
+    return JSONResponse({"detail": "Spotify temporariamente indisponível"}, 429, headers=headers)
 
 
 @cache
@@ -26,6 +37,14 @@ def state_put(state: str, verifier: str) -> None:
 def state_pop(state: str) -> str | None:
     value = _redis().getdel(f"pkce:{state}")
     return value.decode() if value else None
+
+
+def match_get(key: str) -> bytes | None:
+    return _redis().get(key)
+
+
+def match_put(key: str, found: dict | None) -> None:
+    _redis().setex(key, MATCH_TTL_S if found else NO_MATCH_TTL_S, json.dumps(found))
 
 
 class ExchangeIn(BaseModel):
@@ -106,4 +125,10 @@ def search_genre(style: str, limit: int = 5) -> dict:
 
 @app.post("/match")
 def match(body: MatchIn) -> dict:
-    return {"match": spotify.match(body.title, body.artist)}
+    key = f"match:v1:{spotify.normalize(body.title)}|{spotify.normalize(body.artist)}"
+    cached = match_get(key)
+    if cached is not None:
+        return {"match": json.loads(cached)}
+    found = spotify.match(body.title, body.artist)
+    match_put(key, found)
+    return {"match": found}

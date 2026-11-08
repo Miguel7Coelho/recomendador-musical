@@ -35,7 +35,6 @@ export function Entry({ onStarted }: { onStarted: (job: Job) => void }) {
 
   function choose(next: Pending) {
     setLocalError(null);
-    setSong(null);
     upload.reset();
     setPending(next);
   }
@@ -64,30 +63,6 @@ export function Entry({ onStarted }: { onStarted: (job: Job) => void }) {
     </div>
   );
 
-  if (pending) {
-    return (
-      <section className="mx-auto max-w-xl pt-12">
-        <h2 className="text-title font-semibold">Pronto para analisar</h2>
-        <div className="mt-6 space-y-6 bg-surface p-6">
-          <div>
-            <Label>Áudio</Label>
-            <p className="mt-1 break-words">{pending.name}</p>
-          </div>
-          <SongField key={pending.name} initialQuery={pending.guess} value={song} onChange={setSong} />
-          <div className="flex flex-wrap gap-2">
-            <Button variant="primary" onClick={() => upload.mutate(pending)} disabled={upload.isPending}>
-              {upload.isPending ? "Enviando…" : "Analisar"}
-            </Button>
-            <Button onClick={() => setPending(null)} disabled={upload.isPending}>
-              Escolher outro áudio
-            </Button>
-          </div>
-        </div>
-        {notice}
-      </section>
-    );
-  }
-
   const busy = recorder.recording;
 
   return (
@@ -97,30 +72,42 @@ export function Entry({ onStarted }: { onStarted: (job: Job) => void }) {
         Analisamos tom, andamento, estilo e voz, e sugerimos faixas parecidas, uma por vez.
       </p>
 
-      <label
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={onDrop}
-        className={`mt-8 block border border-dashed bg-surface p-8 text-center transition-colors duration-100 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent ${
-          busy ? "border-line" : "cursor-pointer border-control hover:bg-raised"
-        } ${dragging ? "border-accent" : ""}`}
-      >
-        <input
-          type="file"
-          accept="audio/*"
-          className="sr-only"
-          disabled={busy}
-          onChange={(e) => {
-            pick(e.target.files?.[0]);
-            e.target.value = "";
-          }}
-        />
-        <span className="font-medium">Escolha um arquivo de áudio</span>
-        <span className="mt-1 block text-small text-muted">ou arraste para cá · até 25 MB · mínimo de 3 s</span>
-      </label>
+      {pending ? (
+        <div className="mt-8 flex items-center justify-between gap-4 bg-surface p-6">
+          <div className="min-w-0">
+            <Label>Áudio</Label>
+            <p className="mt-1 break-words">{pending.name}</p>
+          </div>
+          <Button onClick={() => setPending(null)} disabled={upload.isPending}>
+            Trocar
+          </Button>
+        </div>
+      ) : (
+          <label
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={onDrop}
+            className={`mt-8 block border border-dashed bg-surface p-8 text-center transition-colors duration-100 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent ${
+              busy ? "border-line" : "cursor-pointer border-control hover:bg-raised"
+            } ${dragging ? "border-accent" : ""}`}
+          >
+            <input
+              type="file"
+              accept="audio/*"
+              className="sr-only"
+              disabled={busy}
+              onChange={(e) => {
+                pick(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+            <span className="font-medium">Escolha um arquivo de áudio</span>
+            <span className="mt-1 block text-small text-muted">ou arraste para cá · até 25 MB · mínimo de 3 s</span>
+          </label>
+      )}
 
       <div className="mt-4 flex items-center gap-4">
         {recorder.recording ? (
@@ -134,11 +121,23 @@ export function Entry({ onStarted }: { onStarted: (job: Job) => void }) {
           </>
         ) : (
           <>
-            <Button onClick={recorder.start}>Gravar pelo microfone</Button>
+            <Button onClick={recorder.start} disabled={upload.isPending}>
+              Gravar pelo microfone
+            </Button>
             <span className="text-small text-muted">Grava até {MAX_RECORDING_S} s</span>
           </>
         )}
       </div>
+
+      <div className="mt-6">
+        <SongField key={pending?.guess ?? ""} initialQuery={pending?.guess ?? ""} value={song} onChange={setSong} />
+      </div>
+
+      {pending && (
+        <Button variant="primary" className="mt-6" onClick={() => upload.mutate(pending)} disabled={upload.isPending}>
+          {upload.isPending ? "Enviando…" : "Analisar"}
+        </Button>
+      )}
 
       {notice}
     </section>

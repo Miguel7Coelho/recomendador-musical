@@ -20,12 +20,12 @@ SPOTIFY_API = os.getenv("SPOTIFY_API_URL", "http://spotify-api:8000")
 MAX_STYLES = 4
 MIN_STYLE_PROB = 0.05  # abaixo disso o estilo é ruído do classificador
 TAG_POOL = 50  # faixas pedidas por etiqueta
-POOL = 80  # faixas procuradas no Spotify por consulta
-MATCH_WORKERS = 6
+POOL = 30  # faixas procuradas no Spotify por consulta: cada uma gasta o limite da API
+MATCH_WORKERS = 2
 BPM_TOLERANCE = 0.10  # dobro e metade do andamento também contam
 MAX_PER_ARTIST = 2
 LISTENER_LIMIT = 100
-LISTENER_POOL = 60  # faixas de ouvintes procuradas no Spotify
+LISTENER_POOL = 30  # faixas de ouvintes procuradas no Spotify
 LISTENER_PER_ARTIST = 4  # os primeiros similares costumam ser do próprio artista
 SCORE_WEIGHTS = {"style": 0.60, "bpm": 0.25, "key": 0.15}
 

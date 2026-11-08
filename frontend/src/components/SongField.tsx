@@ -46,7 +46,7 @@ export function SongField({ initialQuery, value, onChange }: SongFieldProps) {
   return (
     <div>
       <label className="block">
-        <Label>Sabe qual é a música? (opcional)</Label>
+        <Label>Ou pesquise a música aqui (opcional)</Label>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -56,7 +56,7 @@ export function SongField({ initialQuery, value, onChange }: SongFieldProps) {
         />
       </label>
       <p className="mt-1 text-small text-muted">
-        Assim usamos o que os ouvintes dela também escutam. Em beats próprios, deixe em branco.
+        Com o áudio dela, usamos o que os ouvintes também escutam. Em beats próprios, deixe em branco.
       </p>
       {results.length > 0 && (
         <ul className="mt-2 divide-y divide-line border-y border-line" aria-label="Sugestões">

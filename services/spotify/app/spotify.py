@@ -2,6 +2,7 @@
 
 import base64
 import hashlib
+import math
 import re
 import secrets
 import time
@@ -94,8 +95,25 @@ def app_token() -> str:
     return body["access_token"]
 
 
+class RateLimited(Exception):
+    def __init__(self, retry_after: int):
+        super().__init__(f"Spotify pediu para aguardar {retry_after} s")
+        self.retry_after = retry_after
+
+
+_blocked: dict = {"until": 0.0}
+
+
 def _get(path: str, token: str, params: dict | None = None) -> dict:
+    # Insistir durante o bloqueio só o prolonga: nem chega a chamar o Spotify.
+    wait = _blocked["until"] - time.time()
+    if wait > 0:
+        raise RateLimited(math.ceil(wait))
     r = client().get(f"{API}{path}", params=params, headers={"Authorization": f"Bearer {token}"})
+    if r.status_code == 429:
+        retry_after = int(r.headers.get("retry-after", 30))
+        _blocked["until"] = time.time() + retry_after
+        raise RateLimited(retry_after)
     r.raise_for_status()
     return r.json()
 
