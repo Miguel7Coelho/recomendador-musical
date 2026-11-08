@@ -56,7 +56,7 @@ export function SongField({ initialQuery, value, onChange }: SongFieldProps) {
         />
       </label>
       <p className="mt-1 text-small text-muted">
-        Com o áudio dela, usamos o que os ouvintes também escutam. Em beats próprios, deixe em branco.
+        Com o áudio dela, usamos o que os ouvintes também escutam.
       </p>
       {results.length > 0 && (
         <ul className="mt-2 divide-y divide-line border-y border-line" aria-label="Sugestões">
