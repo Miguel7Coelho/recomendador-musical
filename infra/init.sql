@@ -15,6 +15,8 @@ CREATE TABLE tracks (
     year        int,
     duration_s  real,
     dataset_genre text,          -- rótulo da base (ex.: gênero da FMA), para a avaliação
+    audio_sha   char(64),        -- áudio normalizado no S3 (inputs/<sha>.wav)
+    license     text,            -- licença do trecho (FMA: Creative Commons)
     created_at  timestamptz DEFAULT now()
 );
 CREATE UNIQUE INDEX tracks_source_external_id_key ON tracks (source, external_id);
@@ -64,4 +66,13 @@ CREATE TABLE favorites (
     track_id   uuid REFERENCES tracks(id),
     created_at timestamptz DEFAULT now(),
     PRIMARY KEY (user_ref, track_id)
+);
+
+CREATE TABLE spotify_sessions (
+    session_id        text PRIMARY KEY,
+    spotify_user_id   text NOT NULL,
+    display_name      text,
+    refresh_token_enc bytea NOT NULL,   -- refresh token criptografado (Fernet)
+    created_at        timestamptz DEFAULT now(),
+    updated_at        timestamptz DEFAULT now()
 );

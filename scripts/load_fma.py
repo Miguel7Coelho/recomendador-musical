@@ -33,6 +33,7 @@ def load_tracks(metadata_dir: Path, per_genre: int, seed: int) -> pd.DataFrame:
             "artist": small[("artist", "name")],
             "year": pd.to_datetime(small[("album", "date_released")], errors="coerce").dt.year,
             "duration_s": small[("track", "duration")],
+            "license": small[("track", "license")],
         }
     )
     # Embaralha com semente fixa e pega as primeiras N de cada gênero (amostra reprodutível).
@@ -73,6 +74,8 @@ def process(client: httpx.Client, tid: int, row: pd.Series, audio_dir: Path) -> 
         "year": None if pd.isna(row.year) else int(row.year),
         "duration_s": None if pd.isna(row.duration_s) else float(row.duration_s),
         "dataset_genre": row.genre,
+        "audio_sha": sep["sha"],
+        "license": None if pd.isna(row.license) else str(row.license),
         "features": ana["features"],
         "embeddings": ana["embeddings"],
     }

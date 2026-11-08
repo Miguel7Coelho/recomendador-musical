@@ -62,6 +62,7 @@ def test_lookup(fake_db) -> None:
 
 def test_validacao(fake_db) -> None:
     c = TestClient(main.app)
+    assert c.post("/tracks", json={**TRACK, "audio_sha": "../x"}).status_code == 422
     assert c.post("/tracks", json={**TRACK, "source": "spotify"}).status_code == 422
     assert c.post("/tracks", json={**TRACK, "embeddings": {}}).status_code == 422
     assert c.post("/similar", json={"model": "clap", "vec": [0.1], "k": 0}).status_code == 422

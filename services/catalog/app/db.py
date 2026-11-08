@@ -42,11 +42,11 @@ def insert_track(conn, track: dict, features: dict, embeddings: dict[str, list[f
     with conn.transaction():
         track_id = conn.execute(
             """INSERT INTO tracks (source, external_id, spotify_id, title, artist, year,
-                                   duration_s, dataset_genre)
+                                   duration_s, dataset_genre, audio_sha, license)
                VALUES (%(source)s, %(external_id)s, %(spotify_id)s, %(title)s, %(artist)s,
-                       %(year)s, %(duration_s)s, %(dataset_genre)s)
+                       %(year)s, %(duration_s)s, %(dataset_genre)s, %(audio_sha)s, %(license)s)
                RETURNING id""",
-            track,
+            {"audio_sha": None, "license": None, **track},
         ).fetchone()["id"]
 
         values = {c: features.get(c) for c in FEATURE_COLUMNS}
@@ -92,8 +92,8 @@ def similar(conn, model: str, vec: list[float], k: int, exclude_id: str | None) 
 
 _CANDIDATE_COLUMNS = sql.SQL(
     """t.id, t.source, t.external_id, t.spotify_id, t.title, t.artist, t.year,
-       t.dataset_genre, f.camelot, f.key, f.scale, f.bpm, f.styles, f.genre_top,
-       f.vocal_presence, f.vocal_gender, f.vocal_confidence"""
+       t.dataset_genre, t.audio_sha, t.license, f.camelot, f.key, f.scale, f.bpm, f.styles,
+       f.genre_top, f.vocal_presence, f.vocal_gender, f.vocal_confidence"""
 )
 
 
@@ -176,4 +176,13 @@ def track_query(conn, track_id: str, model: str) -> dict | None:
         ).format(cols=_CANDIDATE_COLUMNS),
         (model, track_id),
     ).fetchone()
+    return {**row, "id": str(row["id"])} if row else None
+
+
+def get_track(conn, track_id: str) -> dict | None:
+    row = conn.execute(
+        sql.SQL("SELECT {cols} FROM tracks t JOIN track_features f ON f.track_id = t.id"
+                " WHERE t.id = %s").format(cols=_CANDIDATE_COLUMNS),
+        (track_id,),
+    ).fetchone()  # fmt: skip
     return {**row, "id": str(row["id"])} if row else None

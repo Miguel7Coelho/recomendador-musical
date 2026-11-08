@@ -1,10 +1,11 @@
 from typing import Literal
 from uuid import UUID
 
+import httpx
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
-from app import db, recommend
+from app import db, external, recommend
 
 SERVICE = "catalog"
 
@@ -20,6 +21,8 @@ class TrackIn(BaseModel):
     year: int | None = None
     duration_s: float | None = None
     dataset_genre: str | None = None  # rótulo da base (ex.: gênero da FMA), usado na avaliação
+    audio_sha: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")  # trecho no S3 (FMA)
+    license: str | None = None
     features: dict
     embeddings: dict[str, list[float]] = Field(min_length=1)
 
@@ -64,6 +67,13 @@ class RecommendIn(RecommendOptions):
     features: dict
 
 
+class ExternalIn(BaseModel):
+    features: dict
+    seed_spotify_ids: list[str] = Field([], max_length=5)  # vazio: sementes pelo estilo
+    k: int = Field(10, ge=1, le=40)
+    key: Literal["exact", "compatible", "off"] = "compatible"
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": SERVICE}
@@ -76,6 +86,15 @@ def lookup(source: str, external_id: str) -> dict:
     if track_id is None:
         raise HTTPException(404, "Faixa não encontrada")
     return {"id": track_id}
+
+
+@app.get("/tracks/{track_id}")
+def get_track(track_id: UUID) -> dict:
+    with db.connect() as conn:
+        track = db.get_track(conn, str(track_id))
+    if track is None:
+        raise HTTPException(404, "Faixa não encontrada")
+    return track
 
 
 @app.post("/tracks")
@@ -131,3 +150,12 @@ def recommend_by_track(track_id: UUID, opts: RecommendOptions | None = None) -> 
         raise HTTPException(404, "Faixa sem embedding desse modelo no catálogo")
     exclude = [str(track_id), *(str(i) for i in opts.exclude_ids)]
     return _recommend(opts, query.pop("vec"), query, exclude)
+
+
+@app.post("/recommend/external")
+def recommend_external(req: ExternalIn) -> dict:
+    """Faixas do Spotify via ReccoBeats, filtradas e ordenadas por tom e BPM."""
+    try:
+        return external.recommendations(req.features, req.seed_spotify_ids, req.k, req.key)
+    except httpx.HTTPError as e:
+        raise HTTPException(502, f"ReccoBeats ou Spotify indisponível: {e}") from e

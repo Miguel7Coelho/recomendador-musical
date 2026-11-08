@@ -76,7 +76,7 @@ def score(components: dict[str, float], weights: dict[str, float] = WEIGHTS) -> 
     return sum(weights[name] * components[name] for name in weights)
 
 
-def _bpm_ratio(a: float, b: float) -> float:
+def bpm_ratio(a: float, b: float) -> float:
     """Diferença relativa de andamento, aceitando dobro/metade (90 e 180 BPM são o mesmo pulso)."""
     return min(abs(a * m - b) / b for m in (0.5, 1.0, 2.0))
 
@@ -98,7 +98,7 @@ def explain(query: dict, cand: dict, components: dict[str, float]) -> str:
         vocal = (cand.get("vocal_presence") or 0) >= 0.5
         parts.append(gender.get(cand.get("vocal_gender"), "com vocal") if vocal else "instrumental")
     qb, cb = query.get("bpm"), cand.get("bpm")
-    if qb and cb and _bpm_ratio(qb, cb) <= 0.08:
+    if qb and cb and bpm_ratio(qb, cb) <= 0.08:
         parts.append(f"{cb:.0f} vs. {qb:.0f} BPM")
     return " · ".join(parts)
 

@@ -176,3 +176,12 @@ def test_endpoint_mais_parecidas_com_esta(conn, catalogo) -> None:
     import uuid
 
     assert c.post(f"/recommend/track/{uuid.uuid4()}", json=body).status_code == 404
+
+
+def test_audio_e_licenca(conn) -> None:
+    t = {**track("9", "Pop"), "audio_sha": "a" * 64, "license": "CC BY 4.0"}
+    tid = db.insert_track(conn, t, FEATURES, {"m": [1.0, 0.0]})
+    got = db.get_track(conn, tid)
+    assert got["audio_sha"] == "a" * 64 and got["license"] == "CC BY 4.0"
+    assert db.candidates(conn, "m", [1.0, 0.0], {})[0]["license"] == "CC BY 4.0"
+    assert db.get_track(conn, "00000000-0000-0000-0000-000000000000") is None

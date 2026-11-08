@@ -30,8 +30,8 @@ jobs:
       - run: uv sync --frozen --python 3.12
       - run: uv run pytest -q
 
-  # SQL do catálogo contra um Postgres de verdade com pgvector.
-  catalog-db:
+  # SQL do catálogo e sessões do Spotify contra um Postgres de verdade com pgvector.
+  db:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -43,11 +43,10 @@ jobs:
           --health-cmd pg_isready --health-interval 5s --health-timeout 3s --health-retries 10
     env:
       TEST_DATABASE_URL: postgresql://postgres:test@localhost:5432/postgres
-    defaults:
-      run:
-        working-directory: services/catalog
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v6
-      - run: uv sync --frozen --python 3.12
-      - run: uv run pytest -q tests/test_db.py
+      - working-directory: services/catalog
+        run: uv sync --frozen --python 3.12 && uv run pytest -q tests/test_db.py
+      - working-directory: services/spotify
+        run: uv sync --frozen --python 3.12 && uv run pytest -q tests/test_sessions.py
