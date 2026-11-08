@@ -5,6 +5,7 @@ A ReccoBeats precisa de faixas-semente; o tom e o andamento das recomendações 
 """
 
 import os
+import re
 from functools import cache
 
 import httpx
@@ -17,6 +18,23 @@ POOL = 40
 # Acima disso a faixa é quase só fala (definição do Spotify para speechiness): audiolivros e
 # podcasts aparecem como "faixas" no catálogo do Spotify e não servem como recomendação musical.
 MAX_SPEECHINESS = 0.66
+# Ruído para dormir não se distingue de música ambiente pelos atributos da ReccoBeats (medido em
+# docs/resumo_projeto.json), então só o título, quando a própria faixa se declara ruído, serve.
+NOISE_TITLE = re.compile(
+    r"(white|pink|brown) noise|ru[ií]do (branco|blanco|rosa|marrom)|白噪音|白噪声|ホワイトノイズ",
+    re.IGNORECASE,
+)
+# Atributos idênticos em todos os campos: o mesmo áudio publicado com outro título e artista.
+AUDIO_FIELDS = (
+    "acousticness",
+    "danceability",
+    "energy",
+    "instrumentalness",
+    "liveness",
+    "loudness",
+    "valence",
+    "tempo",
+)
 
 
 @cache
@@ -80,11 +98,17 @@ def recommendations(features: dict, seed_ids: list[str], k: int, key_level: str)
     tracks = [t for t in _recco_recommendations(seeds) if _spotify_id(t["href"]) not in seeds]
     feats = _recco_features([_spotify_id(t["href"]) for t in tracks])
     cands = []
+    seen_audio = set()
     for order, t in enumerate(tracks):
         sid = _spotify_id(t["href"])
         f = feats.get(sid, {})
-        if _is_speech(f):
+        if _is_speech(f) or NOISE_TITLE.search(t["trackTitle"]):
             continue
+        audio = tuple(f.get(name) for name in AUDIO_FIELDS)
+        if None not in audio:
+            if audio in seen_audio:
+                continue
+            seen_audio.add(audio)
         cands.append(
             {
                 "source": "reccobeats",

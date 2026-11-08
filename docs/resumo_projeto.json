@@ -179,6 +179,11 @@
       "motivo": "faixas desconhecidas geram 400; audiolivros/podcasts poluíam as recomendações"
     },
     {
+      "tema": "Qualidade das faixas da ReccoBeats",
+      "decisao": "descartar faixas cujo título se declara ruído e áudios repetidos (atributos idênticos)",
+      "motivo": "num caso real saiu ruído branco e 3 faixas com atributos idênticos; energia, instrumentalidade etc. do ruído ficaram na mesma faixa da música ambiente, então um limiar descartaria música legítima"
+    },
+    {
       "tema": "Voz",
       "decisao": "presença 0 se a stem de voz < 5% da energia da mix; tipo de voz só com presença ≥ 0,5",
       "motivo": "num beat instrumental a stem de voz teve 0,5% da energia e o classificador deu 0,42 por vazamento"
@@ -236,7 +241,7 @@
     "estados_de_erro": [
       "400 no upload: mostrar a mensagem do backend (ex.: 'áudio muito curto')",
       "413: arquivo maior que 25 MB",
-      "status failed: mostrar result.error e permitir reenviar",
+      "status failed: mostrar error (no nível de cima do job) e permitir reenviar",
       "result.spotify_error: mostrar só o catálogo com aviso discreto",
       "result.spotify vazio sem erro: estilo sem sementes na ReccoBeats",
       "401 em /me ou /playlists: oferecer login",

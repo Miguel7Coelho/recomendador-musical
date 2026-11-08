@@ -95,6 +95,23 @@ def test_relaxa_o_tom_quando_faltam_faixas(fake) -> None:
     assert not any(c.url.path == "/search/genre" for c in fake)  # semente dada não busca
 
 
+def test_descarta_ruido_e_audio_repetido(monkeypatch) -> None:
+    def audio(energy: float, **extra) -> dict:
+        fields = dict.fromkeys(external.AUDIO_FIELDS, 0.5)
+        return {**fields, "energy": energy, "key": 6, "mode": 0, "tempo": 100.0, **extra}
+
+    tracks = [_track("n1", "挑整身體白噪音"), _track("n2", "Deep White Noise for Sleep"),
+              _track("a", "Jazz Room"), _track("b", "Jazz Swing"), _track("c", "Ambient Piece"),
+              _track("x", "Sem atributos"), _track("y", "Sem atributos 2")]  # fmt: skip
+    feats = {"n1": audio(0.3), "n2": audio(0.31), "a": audio(0.15), "b": audio(0.15),
+             "c": audio(0.07)}  # fmt: skip
+    monkeypatch.setattr(external, "_recco_recommendations", lambda seeds: tracks)
+    monkeypatch.setattr(external, "_recco_features", lambda ids: feats)
+
+    out = external.recommendations(QUERY, ["seed"], k=10, key_level="off")
+    assert [r["spotify_id"] for r in out["results"]] == ["a", "c", "x", "y"]
+
+
 def test_sem_sementes(monkeypatch, fake) -> None:
     out = external.recommendations({"styles": {"Jazz---Bop": 1.0}}, [], k=3, key_level="off")
     assert out == {"results": [], "seeds": [], "relaxed": []}
