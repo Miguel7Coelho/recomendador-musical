@@ -1,0 +1,199 @@
+fase,experimento,configuracao,metrica,valor,unidade,n,linha_de_base,observacao
+F1,Demucs htdemucs (CPU),"Project_6.wav, 30 s, 1ª execução",tempo de separação,31.1,s,1,,inclui o download do modelo (~80 MB) na primeira vez; Ryzen 5 5600
+F1,Demucs htdemucs (CPU),teste manual fora do Docker,tempo de separação,16,s,1,,estimativa da especificação/teste local sem download de modelo
+F1,Cache por SHA-256,Project_6.wav reenviado,tempo de resposta,0.099,s,1,"31,1 s sem cache",~300× mais rápido (RNF02)
+F2,Atributos com sinal sintético,progressão Am–Dm–E–Am,tom detectado,A minor (8A),,,,"força 0,92"
+F2,Atributos com sinal sintético,cliques a 90 BPM,BPM medido,90.0,BPM,1,90,
+F2,Atributos com sinal sintético,cliques a 120 BPM,BPM medido,120.0,BPM,1,120,
+F2,Atributos com sinal sintético,cliques a 140 BPM,BPM medido,139.9,BPM,1,140,
+F2,Atributos com sinal sintético,ruído em rajadas 4/s,densidade de hi-hat,4.0,ataques/s,1,4,
+F2,Atributos com sinal sintético,ruído em rajadas 8/s,densidade de hi-hat,8.0,ataques/s,1,8,
+F2,Atributos com sinal sintético,seno 50 Hz no baixo / mix 50 Hz+1 kHz,energia de subgrave,0.5,fração,1,0.5,
+F2,Atributos com sinal sintético,seno 1 kHz no baixo,energia de subgrave,0.0,fração,1,0.0,
+F2,Análise de faixa real,"Project_6.wav (beat instrumental, FL Studio)",tom,F major,,,,tom/BPM reais do projeto ainda não informados para comparação
+F2,Análise de faixa real,"Project_6.wav (beat instrumental, FL Studio)",camelot,7B,,,,tom/BPM reais do projeto ainda não informados para comparação
+F2,Análise de faixa real,"Project_6.wav (beat instrumental, FL Studio)",força do tom,0.872,,,,tom/BPM reais do projeto ainda não informados para comparação
+F2,Análise de faixa real,"Project_6.wav (beat instrumental, FL Studio)",BPM,133.09,,,,tom/BPM reais do projeto ainda não informados para comparação
+F2,Análise de faixa real,"Project_6.wav (beat instrumental, FL Studio)",confiança do BPM,0.562,,,,tom/BPM reais do projeto ainda não informados para comparação
+F2,Análise de faixa real,"Project_6.wav (beat instrumental, FL Studio)",densidade de hi-hat,4.37,,,,tom/BPM reais do projeto ainda não informados para comparação
+F2,Análise de faixa real,"Project_6.wav (beat instrumental, FL Studio)",energia de subgrave,3.3e-07,,,,tom/BPM reais do projeto ainda não informados para comparação
+F2,Análise de faixa real,"Project_6.wav (beat instrumental, FL Studio)",gênero amplo,Electronic,,,,tom/BPM reais do projeto ainda não informados para comparação
+F2,Análise de faixa real,"Project_6.wav (beat instrumental, FL Studio)",presença vocal (classificador),0.424,,,,tom/BPM reais do projeto ainda não informados para comparação
+F2,Diagnóstico Project_6,energia RMS da stem / mixagem,energia relativa vocals,0.005,fração,1,,
+F2,Diagnóstico Project_6,energia RMS da stem / mixagem,energia relativa drums,0.538,fração,1,,
+F2,Diagnóstico Project_6,energia RMS da stem / mixagem,energia relativa bass,0.002,fração,1,,
+F2,Diagnóstico Project_6,energia RMS da stem / mixagem,energia relativa other,0.814,fração,1,,
+F2,Diagnóstico Project_6,stem de baixo,fração da energia < 80 Hz,0.104,fração,1,,
+F2,Diagnóstico Project_6,Discogs-400 (soma por gênero amplo),Electronic,0.988,soma de prob.,1,,"Funk / Soul 0,16; R&B não recuperável pelo rótulo em beat instrumental"
+F2,Diagnóstico Project_6,Discogs-400,posição do 1º estilo de soul/R&B,6,posição,1,,"Funk / Soul---Soul (0,038); Neo Soul em #54"
+F2,Diagnóstico Project_6,classificador de voz na mixagem,presença vocal,0.349,prob.,1,,
+F2,Carga FMA small,"50 faixas/gênero, 1ª passagem",tempo médio por faixa,18,s,400,,separação + análise; ~2 h para 400 faixas
+F2,Carga FMA small,recarga com separação em cache,tempo médio por faixa,3,s,400,,
+F2,Carga FMA small,50 faixas/gênero,faixas carregadas,399,faixas,400,,"falhou 098567: 0,55 s de áudio (arquivo defeituoso da FMA); hoje recusada com erro 400"
+F2,Precisão@10 por gênero FMA,"effnet, 1280 dim",precisão@10 geral,0.449,fração,399,0.125,
+F2,Precisão@10 por gênero FMA,"effnet, 1280 dim",precisão@10 Electronic,0.482,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"effnet, 1280 dim",precisão@10 Experimental,0.408,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"effnet, 1280 dim",precisão@10 Folk,0.568,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"effnet, 1280 dim",precisão@10 Hip-Hop,0.622,fração,49,0.125,
+F2,Precisão@10 por gênero FMA,"effnet, 1280 dim",precisão@10 Instrumental,0.378,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"effnet, 1280 dim",precisão@10 International,0.372,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"effnet, 1280 dim",precisão@10 Pop,0.22,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"effnet, 1280 dim",precisão@10 Rock,0.542,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"clap (clap-htsat-unfused), 512 dim",precisão@10 geral,0.463,fração,399,0.125,
+F2,Precisão@10 por gênero FMA,"clap (clap-htsat-unfused), 512 dim",precisão@10 Electronic,0.504,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"clap (clap-htsat-unfused), 512 dim",precisão@10 Experimental,0.282,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"clap (clap-htsat-unfused), 512 dim",precisão@10 Folk,0.592,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"clap (clap-htsat-unfused), 512 dim",precisão@10 Hip-Hop,0.606,fração,49,0.125,
+F2,Precisão@10 por gênero FMA,"clap (clap-htsat-unfused), 512 dim",precisão@10 Instrumental,0.402,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"clap (clap-htsat-unfused), 512 dim",precisão@10 International,0.442,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"clap (clap-htsat-unfused), 512 dim",precisão@10 Pop,0.32,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"clap (clap-htsat-unfused), 512 dim",precisão@10 Rock,0.562,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"effnet_clap (combinado, escolhido), 1792 dim",precisão@10 geral,0.493,fração,399,0.125,
+F2,Precisão@10 por gênero FMA,"effnet_clap (combinado, escolhido), 1792 dim",precisão@10 Electronic,0.522,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"effnet_clap (combinado, escolhido), 1792 dim",precisão@10 Experimental,0.37,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"effnet_clap (combinado, escolhido), 1792 dim",precisão@10 Folk,0.622,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"effnet_clap (combinado, escolhido), 1792 dim",precisão@10 Hip-Hop,0.651,fração,49,0.125,
+F2,Precisão@10 por gênero FMA,"effnet_clap (combinado, escolhido), 1792 dim",precisão@10 Instrumental,0.448,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"effnet_clap (combinado, escolhido), 1792 dim",precisão@10 International,0.432,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"effnet_clap (combinado, escolhido), 1792 dim",precisão@10 Pop,0.316,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"effnet_clap (combinado, escolhido), 1792 dim",precisão@10 Rock,0.59,fração,50,0.125,
+F2,Precisão@10 por gênero FMA,"clap (larger_clap_music), 512 dim",precisão@10 geral,0.185,fração,399,0.125,checkpoint descartado: vetores colapsados
+F2,"Diagnóstico CLAP (80 faixas, 10/gênero)","larger_clap_music, vetores do banco",cosseno médio entre faixas,0.951,,80,,perto de 1 = vetores colapsados
+F2,"Diagnóstico CLAP (80 faixas, 10/gênero)","larger_clap_music, vetores do banco",kNN@5 mesmo gênero,0.175,fração,80,0.125,
+F2,"Diagnóstico CLAP (80 faixas, 10/gênero)","larger_clap_music, vetores do banco",acerto zero-shot,0.125,fração,80,0.125,
+F2,"Diagnóstico CLAP (80 faixas, 10/gênero)","larger_clap_music, janelas de 10 s",cosseno médio entre faixas,0.951,,80,,perto de 1 = vetores colapsados
+F2,"Diagnóstico CLAP (80 faixas, 10/gênero)","larger_clap_music, janelas de 10 s",kNN@5 mesmo gênero,0.175,fração,80,0.125,
+F2,"Diagnóstico CLAP (80 faixas, 10/gênero)","larger_clap_music, janelas de 10 s",acerto zero-shot,0.125,fração,80,0.125,
+F2,"Diagnóstico CLAP (80 faixas, 10/gênero)","larger_clap_music, 10 s iniciais",cosseno médio entre faixas,0.936,,80,,perto de 1 = vetores colapsados
+F2,"Diagnóstico CLAP (80 faixas, 10/gênero)","larger_clap_music, 10 s iniciais",kNN@5 mesmo gênero,0.14,fração,80,0.125,
+F2,"Diagnóstico CLAP (80 faixas, 10/gênero)","larger_clap_music, 10 s iniciais",acerto zero-shot,0.125,fração,80,0.125,
+F2,"Diagnóstico CLAP (80 faixas, 10/gênero)","clap-htsat-unfused, janelas de 10 s",cosseno médio entre faixas,0.489,,80,,perto de 1 = vetores colapsados
+F2,"Diagnóstico CLAP (80 faixas, 10/gênero)","clap-htsat-unfused, janelas de 10 s",kNN@5 mesmo gênero,0.372,fração,80,0.125,
+F2,"Diagnóstico CLAP (80 faixas, 10/gênero)","clap-htsat-unfused, janelas de 10 s",acerto zero-shot,0.375,fração,80,0.125,
+F2,"Diagnóstico CLAP (80 faixas, 10/gênero)","clap-htsat-unfused, 10 s iniciais",cosseno médio entre faixas,0.474,,80,,perto de 1 = vetores colapsados
+F2,"Diagnóstico CLAP (80 faixas, 10/gênero)","clap-htsat-unfused, 10 s iniciais",kNN@5 mesmo gênero,0.355,fração,80,0.125,
+F2,"Diagnóstico CLAP (80 faixas, 10/gênero)","clap-htsat-unfused, 10 s iniciais",acerto zero-shot,0.375,fração,80,0.125,
+F2,Diagnóstico CLAP,"larger_clap_music, 399 faixas",acerto zero-shot,0.118,fração,399,0.125,385 de 399 previstas como International
+F2,Diagnóstico CLAP,larger_clap_music,pesos ausentes ao carregar,0,pesos,,,causa do colapso não identificada
+F3a,Avaliação da recomendação (cada faixa FMA como consulta),só embedding (kNN puro),gênero FMA@10,0.493,fração,399,0.125,
+F3a,Avaliação da recomendação (cada faixa FMA como consulta),só embedding (kNN puro),tom compatível@10,0.224,fração,399,,
+F3a,Avaliação da recomendação (cada faixa FMA como consulta),só embedding (kNN puro),BPM ±8%@10,0.262,fração,399,,
+F3a,Avaliação da recomendação (cada faixa FMA como consulta),só embedding (kNN puro),concordância de voz@10,0.779,fração,399,,
+F3a,Avaliação da recomendação (cada faixa FMA como consulta),só embedding (kNN puro),consultas com relaxamento,0.0,fração,399,,
+F3a,Avaliação da recomendação (cada faixa FMA como consulta),"pontuação 0,55/0,20/0,15/0,10 sem filtros",gênero FMA@10,0.392,fração,399,0.125,
+F3a,Avaliação da recomendação (cada faixa FMA como consulta),"pontuação 0,55/0,20/0,15/0,10 sem filtros",tom compatível@10,0.866,fração,399,,
+F3a,Avaliação da recomendação (cada faixa FMA como consulta),"pontuação 0,55/0,20/0,15/0,10 sem filtros",BPM ±8%@10,0.257,fração,399,,
+F3a,Avaliação da recomendação (cada faixa FMA como consulta),"pontuação 0,55/0,20/0,15/0,10 sem filtros",concordância de voz@10,0.898,fração,399,,
+F3a,Avaliação da recomendação (cada faixa FMA como consulta),"pontuação 0,55/0,20/0,15/0,10 sem filtros",consultas com relaxamento,0.0,fração,399,,
+F3a,Avaliação da recomendação (cada faixa FMA como consulta),cascata + pontuação (especificação),gênero FMA@10,0.393,fração,399,0.125,
+F3a,Avaliação da recomendação (cada faixa FMA como consulta),cascata + pontuação (especificação),tom compatível@10,0.712,fração,399,,
+F3a,Avaliação da recomendação (cada faixa FMA como consulta),cascata + pontuação (especificação),BPM ±8%@10,0.26,fração,399,,
+F3a,Avaliação da recomendação (cada faixa FMA como consulta),cascata + pontuação (especificação),concordância de voz@10,1.0,fração,399,,
+F3a,Avaliação da recomendação (cada faixa FMA como consulta),cascata + pontuação (especificação),consultas com relaxamento,1.0,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.85 / tom 0.0 / estilo 0.1 / voz 0.05,gênero FMA@10,0.4965,fração,399,0.125,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.85 / tom 0.0 / estilo 0.1 / voz 0.05,tom compatível@10,0.2211,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.85 / tom 0.0 / estilo 0.1 / voz 0.05,concordância de voz@10,0.8786,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.8 / tom 0.0 / estilo 0.1 / voz 0.1,gênero FMA@10,0.4902,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.8 / tom 0.0 / estilo 0.1 / voz 0.1,tom compatível@10,0.2231,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.8 / tom 0.0 / estilo 0.1 / voz 0.1,concordância de voz@10,0.9397,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.8 / tom 0.0 / estilo 0.15 / voz 0.05,gênero FMA@10,0.4942,fração,399,0.125,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.8 / tom 0.0 / estilo 0.15 / voz 0.05,tom compatível@10,0.2226,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.8 / tom 0.0 / estilo 0.15 / voz 0.05,concordância de voz@10,0.8695,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.75 / tom 0.0 / estilo 0.15 / voz 0.1,gênero FMA@10,0.488,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.75 / tom 0.0 / estilo 0.15 / voz 0.1,tom compatível@10,0.2223,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.75 / tom 0.0 / estilo 0.15 / voz 0.1,concordância de voz@10,0.9342,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.7 / tom 0.0 / estilo 0.25 / voz 0.05,gênero FMA@10,0.4837,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.7 / tom 0.0 / estilo 0.25 / voz 0.05,tom compatível@10,0.2231,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.7 / tom 0.0 / estilo 0.25 / voz 0.05,concordância de voz@10,0.8386,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.0 / estilo 0.25 / voz 0.1,gênero FMA@10,0.4799,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.0 / estilo 0.25 / voz 0.1,tom compatível@10,0.2231,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.0 / estilo 0.25 / voz 0.1,concordância de voz@10,0.9122,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.8 / tom 0.05 / estilo 0.1 / voz 0.05,gênero FMA@10,0.4897,fração,399,0.125,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.8 / tom 0.05 / estilo 0.1 / voz 0.05,tom compatível@10,0.3842,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.8 / tom 0.05 / estilo 0.1 / voz 0.05,concordância de voz@10,0.8749,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.75 / tom 0.05 / estilo 0.1 / voz 0.1,gênero FMA@10,0.4847,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.75 / tom 0.05 / estilo 0.1 / voz 0.1,tom compatível@10,0.3759,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.75 / tom 0.05 / estilo 0.1 / voz 0.1,concordância de voz@10,0.9441,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.75 / tom 0.05 / estilo 0.15 / voz 0.05,gênero FMA@10,0.4877,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.75 / tom 0.05 / estilo 0.15 / voz 0.05,tom compatível@10,0.3769,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.75 / tom 0.05 / estilo 0.15 / voz 0.05,concordância de voz@10,0.8647,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.7 / tom 0.05 / estilo 0.15 / voz 0.1,gênero FMA@10,0.4842,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.7 / tom 0.05 / estilo 0.15 / voz 0.1,tom compatível@10,0.3724,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.7 / tom 0.05 / estilo 0.15 / voz 0.1,concordância de voz@10,0.9342,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.05 / estilo 0.25 / voz 0.05,gênero FMA@10,0.4832,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.05 / estilo 0.25 / voz 0.05,tom compatível@10,0.3619,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.05 / estilo 0.25 / voz 0.05,concordância de voz@10,0.841,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.6 / tom 0.05 / estilo 0.25 / voz 0.1,gênero FMA@10,0.4812,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.6 / tom 0.05 / estilo 0.25 / voz 0.1,tom compatível@10,0.3637,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.6 / tom 0.05 / estilo 0.25 / voz 0.1,concordância de voz@10,0.9163,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.75 / tom 0.1 / estilo 0.1 / voz 0.05,gênero FMA@10,0.4787,fração,399,0.125,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.75 / tom 0.1 / estilo 0.1 / voz 0.05,tom compatível@10,0.5797,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.75 / tom 0.1 / estilo 0.1 / voz 0.05,concordância de voz@10,0.8637,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.7 / tom 0.1 / estilo 0.1 / voz 0.1,gênero FMA@10,0.4744,fração,399,0.125,ESCOLHIDO (equilibrado)
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.7 / tom 0.1 / estilo 0.1 / voz 0.1,tom compatível@10,0.5689,fração,399,,ESCOLHIDO (equilibrado)
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.7 / tom 0.1 / estilo 0.1 / voz 0.1,concordância de voz@10,0.9342,fração,399,,ESCOLHIDO (equilibrado)
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.7 / tom 0.1 / estilo 0.15 / voz 0.05,gênero FMA@10,0.4774,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.7 / tom 0.1 / estilo 0.15 / voz 0.05,tom compatível@10,0.5669,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.7 / tom 0.1 / estilo 0.15 / voz 0.05,concordância de voz@10,0.8553,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.1 / estilo 0.15 / voz 0.1,gênero FMA@10,0.4687,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.1 / estilo 0.15 / voz 0.1,tom compatível@10,0.5594,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.1 / estilo 0.15 / voz 0.1,concordância de voz@10,0.9285,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.6 / tom 0.1 / estilo 0.25 / voz 0.05,gênero FMA@10,0.4769,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.6 / tom 0.1 / estilo 0.25 / voz 0.05,tom compatível@10,0.5356,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.6 / tom 0.1 / estilo 0.25 / voz 0.05,concordância de voz@10,0.8325,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.55 / tom 0.1 / estilo 0.25 / voz 0.1,gênero FMA@10,0.4652,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.55 / tom 0.1 / estilo 0.25 / voz 0.1,tom compatível@10,0.5336,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.55 / tom 0.1 / estilo 0.25 / voz 0.1,concordância de voz@10,0.9071,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.7 / tom 0.15 / estilo 0.1 / voz 0.05,gênero FMA@10,0.4496,fração,399,0.125,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.7 / tom 0.15 / estilo 0.1 / voz 0.05,tom compatível@10,0.7566,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.7 / tom 0.15 / estilo 0.1 / voz 0.05,concordância de voz@10,0.838,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.15 / estilo 0.1 / voz 0.1,gênero FMA@10,0.4386,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.15 / estilo 0.1 / voz 0.1,tom compatível@10,0.7489,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.15 / estilo 0.1 / voz 0.1,concordância de voz@10,0.9169,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.15 / estilo 0.15 / voz 0.05,gênero FMA@10,0.4499,fração,399,0.125,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.15 / estilo 0.15 / voz 0.05,tom compatível@10,0.7378,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.15 / estilo 0.15 / voz 0.05,concordância de voz@10,0.8329,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.6 / tom 0.15 / estilo 0.15 / voz 0.1,gênero FMA@10,0.4383,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.6 / tom 0.15 / estilo 0.15 / voz 0.1,tom compatível@10,0.7318,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.6 / tom 0.15 / estilo 0.15 / voz 0.1,concordância de voz@10,0.9136,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.55 / tom 0.15 / estilo 0.25 / voz 0.05,gênero FMA@10,0.4449,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.55 / tom 0.15 / estilo 0.25 / voz 0.05,tom compatível@10,0.7015,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.55 / tom 0.15 / estilo 0.25 / voz 0.05,concordância de voz@10,0.8122,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.5 / tom 0.15 / estilo 0.25 / voz 0.1,gênero FMA@10,0.4336,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.5 / tom 0.15 / estilo 0.25 / voz 0.1,tom compatível@10,0.6982,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.5 / tom 0.15 / estilo 0.25 / voz 0.1,concordância de voz@10,0.8932,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.2 / estilo 0.1 / voz 0.05,gênero FMA@10,0.4068,fração,399,0.125,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.2 / estilo 0.1 / voz 0.05,tom compatível@10,0.8897,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.65 / tom 0.2 / estilo 0.1 / voz 0.05,concordância de voz@10,0.8193,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.6 / tom 0.2 / estilo 0.1 / voz 0.1,gênero FMA@10,0.3907,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.6 / tom 0.2 / estilo 0.1 / voz 0.1,tom compatível@10,0.8847,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.6 / tom 0.2 / estilo 0.1 / voz 0.1,concordância de voz@10,0.902,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.6 / tom 0.2 / estilo 0.15 / voz 0.05,gênero FMA@10,0.4075,fração,399,0.125,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.6 / tom 0.2 / estilo 0.15 / voz 0.05,tom compatível@10,0.8739,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.6 / tom 0.2 / estilo 0.15 / voz 0.05,concordância de voz@10,0.8163,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.55 / tom 0.2 / estilo 0.15 / voz 0.1,gênero FMA@10,0.3915,fração,399,0.125,pesos da especificação
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.55 / tom 0.2 / estilo 0.15 / voz 0.1,tom compatível@10,0.8662,fração,399,,pesos da especificação
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.55 / tom 0.2 / estilo 0.15 / voz 0.1,concordância de voz@10,0.898,fração,399,,pesos da especificação
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.5 / tom 0.2 / estilo 0.25 / voz 0.05,gênero FMA@10,0.4013,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.5 / tom 0.2 / estilo 0.25 / voz 0.05,tom compatível@10,0.8346,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.5 / tom 0.2 / estilo 0.25 / voz 0.05,concordância de voz@10,0.7976,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.45 / tom 0.2 / estilo 0.25 / voz 0.1,gênero FMA@10,0.3972,fração,399,0.125,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.45 / tom 0.2 / estilo 0.25 / voz 0.1,tom compatível@10,0.8296,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 0.45 / tom 0.2 / estilo 0.25 / voz 0.1,concordância de voz@10,0.878,fração,399,,
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 1.0 / tom 0.0 / estilo 0.0 / voz 0.0,gênero FMA@10,0.4935,fração,399,0.125,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 1.0 / tom 0.0 / estilo 0.0 / voz 0.0,tom compatível@10,0.2241,fração,399,,fronteira gênero × tom
+F3c,"Grade de pesos (sem filtros, pool de 200)",pesos cos 1.0 / tom 0.0 / estilo 0.0 / voz 0.0,concordância de voz@10,0.779,fração,399,,fronteira gênero × tom
+F3c,Cascata × mínimo de candidatas,cascata com mínimo de 20 candidatas (pesos da especificação),gênero FMA@10,0.393,fração,399,,
+F3c,Cascata × mínimo de candidatas,cascata com mínimo de 20 candidatas (pesos da especificação),tom compatível@10,0.712,fração,399,,
+F3c,Cascata × mínimo de candidatas,cascata com mínimo de 20 candidatas (pesos da especificação),concordância de voz@10,1.0,fração,399,,
+F3c,Cascata × mínimo de candidatas,cascata com mínimo de 10 candidatas (pesos da especificação),gênero FMA@10,0.383,fração,399,,
+F3c,Cascata × mínimo de candidatas,cascata com mínimo de 10 candidatas (pesos da especificação),tom compatível@10,0.666,fração,399,,
+F3c,Cascata × mínimo de candidatas,cascata com mínimo de 10 candidatas (pesos da especificação),concordância de voz@10,1.0,fração,399,,
+F3c,Cascata × mínimo de candidatas,cascata com mínimo de 5 candidatas (pesos da especificação),gênero FMA@10,0.362,fração,399,,
+F3c,Cascata × mínimo de candidatas,cascata com mínimo de 5 candidatas (pesos da especificação),tom compatível@10,0.726,fração,399,,
+F3c,Cascata × mínimo de candidatas,cascata com mínimo de 5 candidatas (pesos da especificação),concordância de voz@10,1.0,fração,399,,
+QA,Testes automatizados (pytest),serviço analysis,testes passando,41,testes,,,catalog e spotify incluem testes contra Postgres real com pgvector (job 'db' da CI)
+QA,Testes automatizados (pytest),serviço separation,testes passando,17,testes,,,catalog e spotify incluem testes contra Postgres real com pgvector (job 'db' da CI)
+QA,Testes automatizados (pytest),serviço catalog,testes passando,47,testes,,,catalog e spotify incluem testes contra Postgres real com pgvector (job 'db' da CI)
+QA,Testes automatizados (pytest),serviço spotify,testes passando,12,testes,,,catalog e spotify incluem testes contra Postgres real com pgvector (job 'db' da CI)
+QA,Testes automatizados (pytest),serviço gateway,testes passando,11,testes,,,catalog e spotify incluem testes contra Postgres real com pgvector (job 'db' da CI)

@@ -1,0 +1,303 @@
+{
+  "projeto": "Recomendador musical por análise de áudio",
+  "contexto": "TCC — Ciência da Computação, UNIP, 2026",
+  "repositorio": "github.com/Miguel7Coelho/recomendador-musical (privado)",
+  "gerado_em": "2026-11-08",
+  "estado": {
+    "fases_concluidas": [
+      "F1 base + Demucs",
+      "F2 análise + embeddings + catálogo",
+      "F3 recomendação + Spotify + ReccoBeats + gateway + ajuste de pesos"
+    ],
+    "proxima_fase": "F4 — front-end no estilo do Samplette",
+    "pendente_de_confirmacao": [
+      "Rodar scripts/eval_recommend.py com os pesos novos para registrar a tabela final da F3",
+      "Informar tom e BPM reais do Project_6 para comparar com a análise (F major/7B, 133 BPM)"
+    ]
+  },
+  "ambiente": {
+    "so": "Fedora 44 (GNOME)",
+    "python": "3.12 via uv",
+    "node": "v26 LTS via fnm",
+    "containers": "Docker 29 + Compose v5",
+    "cpu": "Ryzen 5 5600 (sem GPU para ML)",
+    "portas_localhost": {
+      "gateway": 8000,
+      "separation": 8001,
+      "analysis": 8002,
+      "catalog": 8003,
+      "spotify": 8004,
+      "postgres": 5432,
+      "redis": 6379,
+      "s3": 8333,
+      "painel_s3": 23646,
+      "front (planejado)": 5173
+    },
+    "obs": "todas as portas presas a 127.0.0.1 (o Docker ignora o firewalld)"
+  },
+  "arquitetura": {
+    "servicos": {
+      "gateway": "BFF: única porta do navegador; orquestra upload → separação → análise → recomendação; serve trechos da FMA; login Spotify via cookie HttpOnly",
+      "separation-api + separation-worker": "ffmpeg (WAV 44,1 kHz, 30 s, mín. 3 s, máx. 25 MB) → SHA-256 → cache S3 → Demucs htdemucs (Celery, concurrency 1)",
+      "analysis-api + analysis-worker": "Essentia (tom/Camelot, BPM, hi-hat, subgrave), Discogs-EffNet (gênero/estilo, voz, tipo de voz), CLAP; cache analysis/v2/<sha>.json",
+      "catalog-api": "Postgres + pgvector: faixas, atributos, embeddings; cascata + pontuação; candidatas do Spotify via ReccoBeats",
+      "spotify-api": "OAuth Authorization Code + PKCE; refresh token criptografado (Fernet) no Postgres; busca, correspondência de faixas, playlists",
+      "infra": "Postgres 17 + pgvector (HNSW parcial em vector(1792)), Redis 7, SeaweedFS (S3)"
+    },
+    "ci": "GitHub Actions: ruff (lint+format), pytest por serviço, job 'db' com Postgres+pgvector"
+  },
+  "endpoints_gateway": {
+    "POST /analyze": "multipart campo 'file' → 202 {job_id, status, sha, [features], [result]}; 400 áudio inválido/curto (<3 s), 413 > 25 MB",
+    "GET /jobs/{job_id}": "{job_id, status: separating|analyzing|searching|done|failed, sha, features?, result?, error?}; job expira em 2 h",
+    "POST /recommend/track/{track_id}": "mais parecidas com uma faixa do catálogo; corpo opcional RecommendOptions (filtros, k, pesos)",
+    "POST /recommend/spotify/{spotify_id}": "mais parecidas com uma faixa do Spotify; corpo {camelot, bpm}",
+    "GET /audio/track/{track_id}": "stream audio/wav do trecho da FMA (só source='fma')",
+    "POST /tracks/{track_id}/spotify": "procura a mesma faixa no Spotify → {match | null}",
+    "GET /auth/login": "redireciona ao Spotify; volta em FRONTEND_URL/?login=ok|erro|cancelado",
+    "GET /auth/callback": "uso interno do OAuth (redirect URI cadastrado)",
+    "GET /me": "{spotify_user_id, display_name} ou 401",
+    "POST /auth/logout": "apaga a sessão",
+    "POST /playlists": "{name, spotify_ids[1..500], public=false} → {id, url}; 401 sem login"
+  },
+  "formatos": {
+    "features": {
+      "key": "str — tônica (ex.: 'F#')",
+      "scale": "'major' | 'minor'",
+      "camelot": "str — ex.: '11A'",
+      "key_strength": "float 0–1",
+      "bpm": "float",
+      "bpm_confidence": "float 0–1",
+      "hihat_density": "float — ataques/s na faixa 6–12 kHz da bateria",
+      "subbass_energy": "float 0–1 — fração da energia da mix no baixo < 80 Hz",
+      "styles": "dict estilo Discogs → prob. (top 5; ex.: 'Electronic---Downtempo')",
+      "genre_top": "str — gênero amplo pela soma dos estilos",
+      "vocal_presence": "float 0–1 (0 quando a stem de voz tem < 5% da energia da mix)",
+      "vocal_gender": "'female' | 'male' | null (null quando presença < 0,5)",
+      "vocal_confidence": "float | null"
+    },
+    "result.catalog[]": {
+      "campos": [
+        "id",
+        "source ('fma')",
+        "title",
+        "artist",
+        "year",
+        "dataset_genre",
+        "camelot",
+        "key",
+        "scale",
+        "bpm",
+        "styles",
+        "genre_top",
+        "vocal_presence",
+        "vocal_gender",
+        "vocal_confidence",
+        "license",
+        "audio_sha",
+        "cosine",
+        "score",
+        "components {cosine,key,genre,voice}",
+        "explanation",
+        "audio_url",
+        "credit"
+      ],
+      "exemplo_explanation": "mesmo tom 7B · downtempo · instrumental"
+    },
+    "result.spotify[]": {
+      "campos": [
+        "source ('reccobeats')",
+        "spotify_id",
+        "title",
+        "artists[]",
+        "url",
+        "camelot",
+        "bpm",
+        "explanation"
+      ],
+      "exemplo_explanation": "tom compatível 6B · 133 vs. 133 BPM · via ReccoBeats"
+    },
+    "result.relaxed": "lista de afrouxamentos aplicados, ex.: ['key: exact → compatible']",
+    "result.spotify_error": "presente quando Spotify/ReccoBeats falharam (o catálogo continua válido)",
+    "RecommendOptions": {
+      "filters": {
+        "key": "exact|compatible|off (padrão exact)",
+        "genre": "style|genre|off (padrão style)",
+        "voice": "on|off (padrão on)",
+        "locked": "['key','genre','voice'] nunca relaxados",
+        "bpm_min/bpm_max": "aceita dobro/metade do andamento",
+        "year_min/year_max": "int"
+      },
+      "k": "1–200 (padrão 10)",
+      "min_candidates": "padrão 20",
+      "pool": "padrão 200",
+      "exclude_ids": "uuid[]",
+      "weights": "opcional {cosine,key,genre,voice}"
+    }
+  },
+  "decisoes": [
+    {
+      "tema": "Armazenamento S3",
+      "decisao": "SeaweedFS no lugar do MinIO",
+      "motivo": "imagem do MinIO deixou de ser publicada (out/2025) e o projeto foi arquivado (abr/2026)",
+      "impacto_tcc": "atualizar o texto que cita MinIO"
+    },
+    {
+      "tema": "Embedding",
+      "decisao": "vetor combinado EffNet + CLAP (1792 dim, norma 1)",
+      "motivo": "precisão@10 0,493 contra 0,449 (EffNet) e 0,463 (CLAP); cada um acerta gêneros diferentes",
+      "impacto_tcc": "a especificação previa CLAP × MERT; o MERT não foi testado (código remoto, deps extras)"
+    },
+    {
+      "tema": "Checkpoint CLAP",
+      "decisao": "laion/clap-htsat-unfused",
+      "motivo": "laion/larger_clap_music gerou vetores colapsados com transformers 4.57 (cos médio 0,95, zero-shot no acaso)"
+    },
+    {
+      "tema": "Pesos da pontuação",
+      "decisao": "0,70 / 0,10 / 0,10 / 0,10 (cos / tom / estilo / voz)",
+      "motivo": "pesos da especificação (0,55/0,20/0,15/0,10) ficavam fora da fronteira gênero × tom; o equilibrado mantém 96% da precisão de gênero com 2,5× mais tom compatível que o kNN puro"
+    },
+    {
+      "tema": "Filtros padrão",
+      "decisao": "cascata completa tom → estilo → voz com relaxamento",
+      "motivo": "escolha do grupo; ressalva medida: com 399 faixas o tom é relaxado em 100% das consultas"
+    },
+    {
+      "tema": "Fonte das recomendações",
+      "decisao": "híbrido: catálogo FMA (análise completa, áudio CC próprio) + Spotify via ReccoBeats (só tom e BPM)",
+      "motivo": "FMA quase não está no Spotify; faixas do Spotify não podem ser analisadas (sem áudio)"
+    },
+    {
+      "tema": "Áudio da FMA",
+      "decisao": "servido pelo gateway com crédito ao artista e licença",
+      "motivo": "licenças Creative Commons; várias são NonCommercial (ok para TCC, exige crédito)"
+    },
+    {
+      "tema": "Sementes ReccoBeats",
+      "decisao": "busca por estilo no Spotify; semente só se existir na ReccoBeats e tiver speechiness ≤ 0,66",
+      "motivo": "faixas desconhecidas geram 400; audiolivros/podcasts poluíam as recomendações"
+    },
+    {
+      "tema": "Voz",
+      "decisao": "presença 0 se a stem de voz < 5% da energia da mix; tipo de voz só com presença ≥ 0,5",
+      "motivo": "num beat instrumental a stem de voz teve 0,5% da energia e o classificador deu 0,42 por vazamento"
+    },
+    {
+      "tema": "Gênero amplo",
+      "decisao": "soma das probabilidades de todos os estilos do gênero",
+      "motivo": "mais estável que o estilo de topo quando o modelo está em dúvida"
+    },
+    {
+      "tema": "Python",
+      "decisao": "3.12 + essentia-tensorflow==2.1b6.dev1389 + torch 2.8 CPU",
+      "motivo": "dev1438 só tem pacote para 3.14; torch 2.8 não tem para 3.14"
+    }
+  ],
+  "limitacoes_conhecidas": [
+    "Beats instrumentais: o rótulo de gênero do Discogs-400 é fraco (ex.: R&B instrumental → Electronic/Downtempo)",
+    "Catálogo pequeno (399 faixas): a cascata quase sempre relaxa o filtro de tom",
+    "BPM não entra na pontuação; só filtra quando o usuário define uma faixa de andamento",
+    "Recomendações do Spotify não têm embedding, gênero nem voz (só tom e BPM da ReccoBeats)",
+    "Poucas faixas da FMA têm correspondente no Spotify (para exportar na playlist)",
+    "Spotify em Development Mode: até 5 usuários cadastrados; busca com no máximo 10 resultados",
+    "Limites da ReccoBeats não publicados; 429 é tratado como indisponível",
+    "Possível erro de oitava no BPM (ex.: 133 pode ser 66,5) — falta confirmar com o tom/BPM reais",
+    "Primeira análise lenta (download de modelos); depois ~20 s sem cache e ~0,1 s com cache"
+  ],
+  "front_end": {
+    "stack": "React + Vite + TypeScript + Tailwind v4 + Zustand + TanStack Query; Playwright na F5",
+    "processo_de_design": [
+      "Montar o design system primeiro (DESIGN.md persistente): família estética, cores, tipografia, espaçamento, componentes",
+      "Escolher a família pelo caráter visual (ex.: data-dense, terminal, editorial), não pelo setor; referência github.com/rohitg00/awesome-claude-design",
+      "Até ~4 telas de referência; evitar as 'impressões digitais' visuais de IA (anti-slop)",
+      "Conferir espaçamento manualmente; no handoff entregar variáveis CSS + stubs de componentes",
+      "UX de referência: samplette.io — uma recomendação por vez, ações rápidas"
+    ],
+    "conexao_com_o_backend": [
+      "Falar só com o gateway; em desenvolvimento usar o proxy do Vite (ex.: /api → http://127.0.0.1:8000) para evitar CORS e manter o cookie",
+      "Usar 127.0.0.1, nunca localhost (redirect do Spotify e cookie dependem do host)",
+      "O gateway ainda NÃO tem CORS: com proxy do Vite não precisa; sem proxy, adicionar CORSMiddleware com allow_credentials para FRONTEND_URL",
+      "Requisições com credentials: 'include' (cookie de sessão HttpOnly)"
+    ],
+    "fluxos": {
+      "RF01 enviar ou gravar": "upload com campo 'file' ou MediaRecorder (~10 s, webm/opus serve; mínimo 3 s); validar 25 MB no cliente",
+      "RF02 progresso": "poll de GET /jobs/{id} a cada 1–2 s; mapear separating→'separando', analyzing→'analisando', searching→'buscando'; parar em done/failed",
+      "RF03 chips de atributos": "tom + Camelot, BPM, gênero amplo + estilos com probabilidade, voz (ocultar tipo quando vocal_gender = null); mostrar confiança",
+      "RF04 uma recomendação por vez": "player + metadados + score + explanation ('parecida porque…') + aviso de relaxamento (result.relaxed)",
+      "RF05 ações": "pular, aleatório, avançar automático, favoritar, 'mais parecidas com esta' (catálogo: POST /recommend/track/{id}; Spotify: POST /recommend/spotify/{id} com {camelot,bpm})",
+      "RF06 gaveta de filtros": "tom (exato/compatível/desligado), gênero/estilo, voz, BPM (dobro/metade aceitos), ano; travar = enviar em filters.locked",
+      "RF07 exportar playlist": "faixas do Spotify já têm spotify_id; faixas da FMA precisam de POST /tracks/{id}/spotify (geralmente null → marcar 'não está no Spotify'); POST /playlists; 401 → navegar para /auth/login"
+    },
+    "players": {
+      "catalogo_fma": "<audio src='/audio/track/{id}'> com crédito visível (artista + licença) — exigência CC",
+      "spotify": "iframe https://open.spotify.com/embed/track/{spotify_id} (não precisa de login nem escopo)"
+    },
+    "estados_de_erro": [
+      "400 no upload: mostrar a mensagem do backend (ex.: 'áudio muito curto')",
+      "413: arquivo maior que 25 MB",
+      "status failed: mostrar result.error e permitir reenviar",
+      "result.spotify_error: mostrar só o catálogo com aviso discreto",
+      "result.spotify vazio sem erro: estilo sem sementes na ReccoBeats",
+      "401 em /me ou /playlists: oferecer login",
+      "query ?login=ok|erro|cancelado após o retorno do Spotify"
+    ],
+    "lacunas_no_backend_para_a_F4": [
+      "Reaplicar filtros num upload: falta POST /jobs/{id}/recommend usando a análise guardada no job (hoje o resultado do upload usa os filtros padrão)",
+      "Favoritos: a tabela favorites existe, mas sem endpoints (MVP pode guardar no cliente com Zustand persistido)",
+      "CORS no gateway, se não usar o proxy do Vite",
+      "Exportar BPM/ano das faixas do Spotify como filtros (hoje só tom/BPM na ordenação)"
+    ],
+    "acessibilidade_e_responsivo": [
+      "Controles do player acessíveis por teclado; foco visível",
+      "Contraste adequado nos chips e no estado 'relaxado'",
+      "Layout de uma coluna no celular (gravação pelo microfone é caso de uso forte no mobile)"
+    ]
+  },
+  "como_reproduzir_as_medicoes": {
+    "carga_fma": "uv run scripts/load_fma.py --metadata ~/dev/datasets/fma/fma_metadata --audio ~/dev/datasets/fma/fma_small --per-genre 50",
+    "precisao_embeddings": "uv run scripts/eval_precision_at_k.py --k 10",
+    "avaliacao_recomendacao": "uv run scripts/eval_recommend.py --k 10",
+    "grade_de_pesos": "uv run scripts/tune_weights.py --k 10 --csv docs/ajuste_pesos.csv"
+  },
+  "medicoes_principais": {
+    "separacao": {
+      "primeira_execucao_s": 31.1,
+      "com_cache_s": 0.099
+    },
+    "precisao_at_10": {
+      "acaso": 0.125,
+      "effnet": 0.449,
+      "clap_unfused": 0.463,
+      "clap_larger_music": 0.185,
+      "effnet_clap": 0.493
+    },
+    "recomendacao_pesos_especificacao": {
+      "so_embedding": {
+        "genero": 0.493,
+        "tom": 0.224,
+        "voz": 0.779
+      },
+      "pontuacao": {
+        "genero": 0.392,
+        "tom": 0.866,
+        "voz": 0.898
+      },
+      "cascata": {
+        "genero": 0.393,
+        "tom": 0.712,
+        "voz": 1.0,
+        "relaxou": 1.0
+      }
+    },
+    "pesos_escolhidos": {
+      "cos": 0.7,
+      "tom": 0.1,
+      "estilo": 0.1,
+      "voz": 0.1,
+      "genero": 0.474,
+      "tom_ok": 0.569,
+      "voz_ok": 0.934
+    },
+    "detalhes": "ver resumo_medicoes.csv (uma linha por número, com n e linha de base)"
+  }
+}
