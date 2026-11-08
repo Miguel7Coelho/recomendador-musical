@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import type { CatalogRecommendation, Features, Filters, JobResult } from "../api/types";
 import { formatBpm, formatRelaxed, formatScore } from "../lib/format";
-import { catalogFirst, fromCatalog, fromSpotify, recArtist, recTitle, type Rec } from "../lib/recs";
+import { fromCatalog, fromSpotify, recArtist, recTitle, spotifyFirst, type Rec } from "../lib/recs";
 import { useSession } from "../store";
 import { Drawer } from "./Drawer";
 import { DEFAULT_FILTERS, FilterForm } from "./FilterForm";
@@ -37,7 +37,7 @@ export function Results({ jobId, features, result }: ResultsProps) {
   const { favorites, autoplay, toggleFavorite, toggleAutoplay } = useSession();
 
   const catalog = filtered?.results ?? result.catalog;
-  const original = useMemo(() => catalogFirst(catalog, result.spotify), [catalog, result.spotify]);
+  const original = useMemo(() => spotifyFirst(catalog, result.spotify), [catalog, result.spotify]);
 
   const more = useMutation({
     mutationFn: (rec: Rec) => moreLike(rec, features),
@@ -54,7 +54,8 @@ export function Results({ jobId, features, result }: ResultsProps) {
       setFilters(next);
       setFiltered(out);
       setSimilar(null);
-      setIndex(0);
+      // Os filtros só mudam o catálogo: vai direto para o que mudou.
+      setIndex(out.results.length > 0 ? result.spotify.length : 0);
       setShowFilters(false);
     },
   });
