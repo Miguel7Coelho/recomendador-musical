@@ -20,7 +20,9 @@ class Services:
     """Separação, análise, catálogo e spotify-api falsos. `plan` controla cada cenário."""
 
     def __init__(self, sep_cached=True, ana_cached=True, sep_polls=1, ana_polls=1,
-                 ana_fails=False, external_ok=True, sep_status=202):  # fmt: skip
+                 ana_fails=False, external_ok=True, sep_status=202,
+                 external_relaxed=None):  # fmt: skip
+        self.external_relaxed = external_relaxed
         self.sep_cached, self.ana_cached = sep_cached, ana_cached
         self.sep_left, self.ana_left = sep_polls, ana_polls
         self.ana_fails, self.external_ok, self.sep_status = ana_fails, external_ok, sep_status
@@ -61,7 +63,10 @@ class Services:
             if path == "/recommend/external":
                 if not self.external_ok:
                     return httpx.Response(502, json={"detail": "fora"})
-                return httpx.Response(200, json={"results": [{"spotify_id": "s1"}]})
+                out = {"results": [{"spotify_id": "s1"}]}
+                if self.external_relaxed:
+                    out["relaxed"] = self.external_relaxed
+                return httpx.Response(200, json=out)
             if path == f"/tracks/{FMA_ID}":
                 return httpx.Response(200, json={"id": FMA_ID, "source": "fma", "audio_sha": SHA,
                                                  "title": "Food", "artist": "AWOL"})  # fmt: skip
@@ -151,6 +156,13 @@ def test_spotify_fora_nao_derruba_o_catalogo(setup) -> None:
     body = upload(c).json()
     assert body["status"] == "done" and len(body["result"]["catalog"]) == 2
     assert body["result"]["spotify"] == [] and "spotify_error" in body["result"]
+
+
+def test_relaxamento_do_spotify_chega_ao_front(setup) -> None:
+    c, _ = setup(external_relaxed=["key: compatible → off"])
+    result = upload(c).json()["result"]
+    assert result["spotify_relaxed"] == ["key: compatible → off"]
+    assert result["relaxed"] == ["key: exact → off"]  # o do catálogo continua separado
 
 
 def test_erro_da_separacao_e_repassado(setup) -> None:

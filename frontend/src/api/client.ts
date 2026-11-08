@@ -59,7 +59,7 @@ export const api = {
   moreLikeTrack: (trackId: string, options?: RecommendOptions) =>
     postJson<CatalogRecommendation>(`/recommend/track/${trackId}`, options),
   moreLikeSpotify: (spotifyId: string, seed: { camelot: string; bpm: number }) =>
-    postJson<{ results: SpotifyTrack[] }>(`/recommend/spotify/${spotifyId}`, seed),
+    postJson<{ results: SpotifyTrack[]; relaxed?: string[] }>(`/recommend/spotify/${spotifyId}`, seed),
 
   matchOnSpotify: (trackId: string) =>
     postJson<{ match: SpotifyMatch | null }>(`/tracks/${trackId}/spotify`),

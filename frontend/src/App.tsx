@@ -1,11 +1,14 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
-import { api, ApiError } from "./api/client";
+import { api, ApiError, loginUrl } from "./api/client";
 import type { Job } from "./api/types";
+import { Drawer } from "./components/Drawer";
 import { Entry } from "./components/Entry";
+import { Favorites } from "./components/Favorites";
 import { Failed, Progress } from "./components/Progress";
 import { Results } from "./components/Results";
-import { Button } from "./components/ui";
+import { Button, Notice } from "./components/ui";
 import { useSession } from "./store";
 
 const POLL_MS = 1500;
@@ -34,14 +37,52 @@ function Screen({ jobId, onReset }: { jobId: string; onReset: () => void }) {
     return <Failed message={job.data.error ?? "A análise falhou."} onRetry={onReset} />;
   }
   if (job.data.status === "done" && job.data.features && job.data.result) {
-    return <Results features={job.data.features} result={job.data.result} />;
+    return <Results jobId={jobId} features={job.data.features} result={job.data.result} />;
   }
   return <Progress status={job.data.status} />;
 }
 
-export function App() {
-  const { jobId, setJob } = useSession();
+function Account() {
   const queryClient = useQueryClient();
+  const me = useQuery({ queryKey: ["me"], queryFn: api.me, retry: false, refetchOnWindowFocus: false });
+  const logout = useMutation({
+    mutationFn: api.logout,
+    onSuccess: () => queryClient.resetQueries({ queryKey: ["me"] }),
+  });
+
+  if (!me.data) {
+    return (
+      <a href={loginUrl} className="inline-flex min-h-11 items-center rounded-sm border border-control px-4 hover:bg-raised">
+        Entrar com Spotify
+      </a>
+    );
+  }
+  return (
+    <>
+      <span className="text-small text-muted">{me.data.display_name ?? "Conectado ao Spotify"}</span>
+      <Button onClick={() => logout.mutate()} disabled={logout.isPending}>
+        Sair
+      </Button>
+    </>
+  );
+}
+
+const LOGIN_MESSAGES: Record<string, { tone: "info" | "danger"; text: string }> = {
+  ok: { tone: "info", text: "Login no Spotify concluído." },
+  cancelado: { tone: "info", text: "Login no Spotify cancelado." },
+  erro: { tone: "danger", text: "Não foi possível entrar no Spotify. Tente de novo." },
+};
+
+export function App() {
+  const { jobId, setJob, favorites } = useSession();
+  const queryClient = useQueryClient();
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [login] = useState(() => new URLSearchParams(window.location.search).get("login"));
+  const loginMessage = login ? LOGIN_MESSAGES[login] : undefined;
+
+  useEffect(() => {
+    if (login) window.history.replaceState(null, "", window.location.pathname);
+  }, [login]);
 
   function started(job: Job) {
     queryClient.setQueryData(["job", job.job_id], job);
@@ -50,13 +91,25 @@ export function App() {
 
   return (
     <div className="mx-auto max-w-[1120px] px-4 pb-16">
-      <header className="flex min-h-16 items-center justify-between gap-4 border-b border-line">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line py-2.5">
         <h1 className="font-mono text-small font-medium">Recomendador musical</h1>
-        {jobId && <Button onClick={() => setJob(null)}>Nova análise</Button>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={() => setShowFavorites(true)}>Favoritas · {Object.keys(favorites).length}</Button>
+          <Account />
+          {jobId && <Button onClick={() => setJob(null)}>Nova análise</Button>}
+        </div>
       </header>
+      {loginMessage && (
+        <div className="mt-4">
+          <Notice tone={loginMessage.tone}>{loginMessage.text}</Notice>
+        </div>
+      )}
       <main className="pt-8">
         {jobId ? <Screen key={jobId} jobId={jobId} onReset={() => setJob(null)} /> : <Entry onStarted={started} />}
       </main>
+      <Drawer open={showFavorites} onClose={() => setShowFavorites(false)} title="Favoritas">
+        <Favorites />
+      </Drawer>
     </div>
   );
 }

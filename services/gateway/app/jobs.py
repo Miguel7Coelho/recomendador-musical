@@ -87,6 +87,7 @@ def _searching(job: dict) -> dict:
     ext = clients.http().post(f"{CATALOG_URL}/recommend/external", json={"features": features})
     if ext.status_code == 200:
         result["spotify"] = ext.json()["results"]
+        result["spotify_relaxed"] = ext.json().get("relaxed", [])
     else:
         result["spotify_error"] = "Recomendações do Spotify indisponíveis no momento"
     return {**job, "stage": "done", "result": result}

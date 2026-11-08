@@ -66,6 +66,7 @@ export type JobResult = {
   catalog: CatalogTrack[];
   relaxed: string[];
   spotify: SpotifyTrack[];
+  spotify_relaxed?: string[];
   spotify_error?: string;
 };
 
@@ -109,6 +110,6 @@ export type CatalogRecommendation = {
 
 export type SpotifyMatch = { spotify_id: string } & Record<string, unknown>;
 
-export type Me = { spotify_user_id: string; display_name: string };
+export type Me = { spotify_user_id: string; display_name: string | null };
 
 export type NewPlaylist = { name: string; spotify_ids: string[]; public?: boolean };

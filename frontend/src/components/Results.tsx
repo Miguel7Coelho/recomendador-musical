@@ -2,10 +2,12 @@ import { useMutation } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
 import { api } from "../api/client";
-import type { Features, JobResult } from "../api/types";
+import type { CatalogRecommendation, Features, Filters, JobResult } from "../api/types";
 import { formatBpm, formatRelaxed, formatScore } from "../lib/format";
 import { fromCatalog, fromSpotify, interleave, recArtist, recTitle, type Rec } from "../lib/recs";
 import { useSession } from "../store";
+import { Drawer } from "./Drawer";
+import { DEFAULT_FILTERS, FilterForm } from "./FilterForm";
 import { Player } from "./Player";
 import { SourceTrack } from "./SourceTrack";
 import { Button, Label, Notice, Readout } from "./ui";
@@ -20,14 +22,21 @@ async function moreLike(rec: Rec): Promise<Similar> {
   }
   const { camelot, bpm, spotify_id } = rec.track;
   const out = await api.moreLikeSpotify(spotify_id, { camelot, bpm });
-  return { seed, items: out.results.map(fromSpotify), relaxed: [] };
+  return { seed, items: out.results.map(fromSpotify), relaxed: out.relaxed ?? [] };
 }
 
-export function Results({ features, result }: { features: Features; result: JobResult }) {
-  const original = useMemo(() => interleave(result.catalog, result.spotify), [result]);
+type ResultsProps = { jobId: string; features: Features; result: JobResult };
+
+export function Results({ jobId, features, result }: ResultsProps) {
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [filtered, setFiltered] = useState<CatalogRecommendation | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
   const [similar, setSimilar] = useState<Similar | null>(null);
   const [index, setIndex] = useState(0);
   const { favorites, autoplay, toggleFavorite, toggleAutoplay } = useSession();
+
+  const catalog = filtered?.results ?? result.catalog;
+  const original = useMemo(() => interleave(catalog, result.spotify), [catalog, result.spotify]);
 
   const more = useMutation({
     mutationFn: moreLike,
@@ -38,11 +47,25 @@ export function Results({ features, result }: { features: Features; result: JobR
     },
   });
 
+  const refilter = useMutation({
+    mutationFn: (next: Filters) => api.refilter(jobId, { filters: next }),
+    onSuccess: (out, next) => {
+      setFilters(next);
+      setFiltered(out);
+      setSimilar(null);
+      setIndex(0);
+      setShowFilters(false);
+    },
+  });
+
   const items = similar?.items ?? original;
-  const relaxed = similar?.relaxed ?? result.relaxed;
   const rec = items[index];
+  const catalogRelaxed = similar?.relaxed ?? filtered?.relaxed ?? result.relaxed;
+  const spotifyRelaxed = similar?.relaxed ?? result.spotify_relaxed ?? [];
+  const relaxed = rec?.kind === "spotify" ? spotifyRelaxed : catalogRelaxed;
   const favorite = rec ? rec.key in favorites : false;
   const noMatches = more.isSuccess && more.data.items.length === 0;
+  const filtersActive = JSON.stringify(filters) !== JSON.stringify(DEFAULT_FILTERS);
 
   const next = () => setIndex((i) => (i + 1) % items.length);
   const previous = () => setIndex((i) => (i - 1 + items.length) % items.length);
@@ -51,8 +74,8 @@ export function Results({ features, result }: { features: Features; result: JobR
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.ctrlKey || e.metaKey || e.altKey || !rec) return;
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || !rec || document.querySelector("dialog[open]")) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
       if (e.key === "n") next();
       else if (e.key === "p") previous();
       else if (e.key === "a" && items.length > 1) shuffle();
@@ -71,20 +94,26 @@ export function Results({ features, result }: { features: Features; result: JobR
           <Label>
             {similar ? `Parecidas com ${similar.seed}` : "Recomendação"} · {rec ? index + 1 : 0} de {items.length}
           </Label>
-          {similar && (
-            <Button
-              onClick={() => {
-                setSimilar(null);
-                setIndex(0);
-              }}
-            >
-              Voltar aos resultados
-            </Button>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {similar && (
+              <Button
+                onClick={() => {
+                  setSimilar(null);
+                  setIndex(0);
+                }}
+              >
+                Voltar aos resultados
+              </Button>
+            )}
+            <Button onClick={() => setShowFilters(true)}>{filtersActive ? "Filtros ativos" : "Filtros"}</Button>
+          </div>
         </div>
 
         {relaxed.length > 0 && (
           <Notice>Busca ampliada para achar faixas suficientes: {relaxed.map(formatRelaxed).join("; ")}.</Notice>
+        )}
+        {!similar && filtered?.results.length === 0 && (
+          <Notice>Nenhuma faixa do catálogo passou nesses filtros. Mostrando só o Spotify.</Notice>
         )}
         {!similar && result.spotify_error && <Notice>{result.spotify_error}. Mostrando só o catálogo.</Notice>}
         {!similar && !result.spotify_error && result.spotify.length === 0 && (
@@ -140,6 +169,15 @@ export function Results({ features, result }: { features: Features; result: JobR
           <Notice>Nenhuma recomendação encontrada para esta faixa.</Notice>
         )}
       </section>
+
+      <Drawer open={showFilters} onClose={() => setShowFilters(false)} title="Filtros">
+        <FilterForm
+          value={filters}
+          pending={refilter.isPending}
+          error={refilter.isError ? refilter.error.message : null}
+          onApply={(next) => refilter.mutate(next)}
+        />
+      </Drawer>
     </div>
   );
 }

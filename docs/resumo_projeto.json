@@ -118,6 +118,7 @@
       "exemplo_explanation": "tom compatível 6B · 133 vs. 133 BPM · via ReccoBeats"
     },
     "result.relaxed": "lista de afrouxamentos aplicados, ex.: ['key: exact → compatible']",
+    "result.spotify_relaxed": "afrouxamentos aplicados às faixas do Spotify, ex.: ['key: compatible → off']",
     "result.spotify_error": "presente quando Spotify/ReccoBeats falharam (o catálogo continua válido)",
     "RecommendOptions": {
       "filters": {
