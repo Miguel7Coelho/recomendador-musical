@@ -164,6 +164,54 @@ def test_job_inexistente(setup) -> None:
     assert c.get(f"/jobs/{uuid.uuid4()}").status_code == 404
 
 
+def test_refiltrar_reaproveita_a_analise_do_job(setup) -> None:
+    c, svc = setup()
+    job = upload(c).json()
+    svc.calls.clear()
+    filters = {"key": "compatible", "locked": ["voice"], "bpm_min": 90}
+    # Quem chama não consegue trocar a consulta guardada no job.
+    options = {"filters": filters, "k": 5, "vec": [9.9], "features": {}, "model": "clap"}
+    r = c.post(f"/jobs/{job['job_id']}/recommend", json=options)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["relaxed"] == ["key: exact → off"]
+    assert body["results"][0]["audio_url"] == f"/audio/track/{FMA_ID}"
+    assert "audio_url" not in body["results"][1]
+    assert [x.url.path for x in svc.calls] == ["/recommend"]  # nada de reanalisar
+    sent = json.loads(svc.calls[0].content)
+    assert sent == {**options, "vec": VEC, "features": FEATURES, "model": "effnet_clap"}
+
+
+def test_refiltrar_sem_corpo_usa_os_padroes(setup) -> None:
+    c, svc = setup()
+    job = upload(c).json()
+    svc.calls.clear()
+    assert c.post(f"/jobs/{job['job_id']}/recommend").status_code == 200
+    sent = json.loads(svc.calls[0].content)
+    assert sent == {"vec": VEC, "features": FEATURES, "model": "effnet_clap"}
+
+
+def test_refiltrar_job_inexistente_ou_sem_analise(setup) -> None:
+    c, svc = setup(sep_cached=False, sep_polls=5)
+    assert c.post(f"/jobs/{uuid.uuid4()}/recommend").status_code == 404
+    job = upload(c).json()
+    assert job["status"] == "separating"
+    assert c.post(f"/jobs/{job['job_id']}/recommend").status_code == 409
+
+
+def test_refiltrar_com_catalogo_fora(setup, monkeypatch) -> None:
+    c, _ = setup()
+    job = upload(c).json()
+
+    def catalog_down(req):
+        raise httpx.ConnectError("catálogo reiniciando")
+
+    monkeypatch.setattr(
+        clients, "http", lambda: httpx.Client(transport=httpx.MockTransport(catalog_down))
+    )
+    assert c.post(f"/jobs/{job['job_id']}/recommend").status_code == 503
+
+
 def test_audio_so_da_fma(setup, monkeypatch) -> None:
     c, _ = setup()
 

@@ -49,6 +49,7 @@
   "endpoints_gateway": {
     "POST /analyze": "multipart campo 'file' → 202 {job_id, status, sha, [features], [result]}; 400 áudio inválido/curto (<3 s), 413 > 25 MB",
     "GET /jobs/{job_id}": "{job_id, status: separating|analyzing|searching|done|failed, sha, features?, result?, error?}; job expira em 2 h",
+    "POST /jobs/{job_id}/recommend": "refaz a busca no catálogo com a análise guardada no job; corpo opcional RecommendOptions → {results, levels, relaxed, pool}; 404 job expirado, 409 análise não terminou, 503 catálogo fora; não refaz as faixas do Spotify",
     "POST /recommend/track/{track_id}": "mais parecidas com uma faixa do catálogo; corpo opcional RecommendOptions (filtros, k, pesos)",
     "POST /recommend/spotify/{spotify_id}": "mais parecidas com uma faixa do Spotify; corpo {camelot, bpm}",
     "GET /audio/track/{track_id}": "stream audio/wav do trecho da FMA (só source='fma')",
@@ -242,7 +243,6 @@
       "query ?login=ok|erro|cancelado após o retorno do Spotify"
     ],
     "lacunas_no_backend_para_a_F4": [
-      "Reaplicar filtros num upload: falta POST /jobs/{id}/recommend usando a análise guardada no job (hoje o resultado do upload usa os filtros padrão)",
       "Favoritos: a tabela favorites existe, mas sem endpoints (MVP pode guardar no cliente com Zustand persistido)",
       "CORS no gateway, se não usar o proxy do Vite",
       "Exportar BPM/ano das faixas do Spotify como filtros (hoje só tom/BPM na ordenação)"

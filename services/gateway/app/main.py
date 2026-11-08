@@ -1,13 +1,14 @@
 from uuid import UUID
 
 import httpx
-from fastapi import Cookie, FastAPI, HTTPException, Request, Response, UploadFile
+from fastapi import Body, Cookie, FastAPI, HTTPException, Request, Response, UploadFile
 from fastapi.responses import RedirectResponse, StreamingResponse
 
 from app import clients, jobs
 from app.config import (
     CATALOG_URL,
     COOKIE_SECURE,
+    EMBEDDING_MODEL,
     FRONTEND_URL,
     S3_BUCKET,
     SEPARATION_URL,
@@ -61,6 +62,25 @@ def get_job(job_id: UUID) -> dict:
     job = jobs.advance(job)
     jobs.save(job)
     return jobs.view(job)
+
+
+@app.post("/jobs/{job_id}/recommend")
+def recommend_from_job(job_id: UUID, options: dict | None = Body(None)) -> dict:
+    """Refaz a busca no catálogo com novos filtros, reaproveitando a análise guardada no job."""
+    job = jobs.load(str(job_id))
+    if job is None:
+        raise HTTPException(404, "Análise não encontrada ou expirada")
+    if "analysis" not in job:
+        raise HTTPException(409, "A análise desta faixa ainda não terminou")
+    # A consulta é sempre a análise do job: o corpo só escolhe filtros, k e pesos.
+    body = {**(options or {}), **job["analysis"], "model": EMBEDDING_MODEL}
+    try:
+        r = clients.http().post(f"{CATALOG_URL}/recommend", json=body)
+    except httpx.HTTPError as e:
+        raise HTTPException(503, "Catálogo indisponível no momento") from e
+    out = _ok(r)
+    jobs.save(job)  # quem segue ajustando filtros não perde a análise após 2 h
+    return {**out, "results": jobs.with_audio(out["results"])}
 
 
 # --- Mais recomendações ----------------------------------------------------------------------
