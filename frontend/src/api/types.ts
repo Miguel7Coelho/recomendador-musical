@@ -26,6 +26,8 @@ export type ScoreComponents = {
 export type CatalogTrack = {
   id: string;
   source: "fma" | "upload";
+  external_id: string | null;
+  spotify_id: string | null;
   title: string | null;
   artist: string | null;
   year: number | null;

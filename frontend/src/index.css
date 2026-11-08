@@ -31,6 +31,7 @@
   --text-readout--line-height: 44px;
 
   --radius-sm: 2px;
+  --tracking-label: 0.08em;
 }
 
 @layer base {
