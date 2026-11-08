@@ -108,6 +108,8 @@ export type CatalogRecommendation = {
   pool: number;
 };
 
+export type Song = { title: string; artist: string };
+
 export type SpotifyMatch = { spotify_id: string } & Record<string, unknown>;
 
 export type Me = { spotify_user_id: string; display_name: string | null };

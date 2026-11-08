@@ -3,7 +3,17 @@ from uuid import UUID
 
 import httpx
 from botocore.exceptions import ClientError
-from fastapi import Body, Cookie, FastAPI, Header, HTTPException, Request, Response, UploadFile
+from fastapi import (
+    Body,
+    Cookie,
+    FastAPI,
+    Form,
+    Header,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from fastapi.responses import RedirectResponse, StreamingResponse
 
 from app import clients, jobs
@@ -49,10 +59,13 @@ def health() -> dict[str, str]:
 
 
 @app.post("/analyze", status_code=202)
-def analyze(file: UploadFile) -> dict:
+def analyze(
+    file: UploadFile, title: str | None = Form(None), artist: str | None = Form(None)
+) -> dict:
     files = {"file": (file.filename or "audio", file.file, file.content_type)}
     separation = _ok(clients.http().post(f"{SEPARATION_URL}/separate", files=files))
-    job = jobs.advance(jobs.new(separation))
+    track = {"title": title, "artist": artist} if title and artist else None
+    job = jobs.advance(jobs.new(separation, track))
     jobs.save(job)
     return jobs.view(job)
 
@@ -86,6 +99,11 @@ def recommend_from_job(job_id: UUID, options: dict | None = Body(None)) -> dict:
     return {**out, "results": jobs.with_audio(out["results"])}
 
 
+@app.get("/songs/search")
+def search_songs(q: str) -> dict:
+    return _ok(clients.http().get(f"{CATALOG_URL}/songs/search", params={"q": q}))
+
+
 # --- Mais recomendações ----------------------------------------------------------------------
 
 
@@ -102,7 +120,10 @@ async def more_like_catalog_track(track_id: UUID, request: Request) -> dict:
 async def more_like_spotify_track(spotify_id: str, request: Request) -> dict:
     """Mais parecidas com uma faixa do Spotify, sem repetir a própria faixa."""
     features = await request.json() if await request.body() else {}
+    track = features.pop("track", None)
     body = {"features": features, "exclude_spotify_ids": [spotify_id]}
+    if track:
+        body["track"] = track
     return _ok(clients.http().post(f"{CATALOG_URL}/recommend/external", json=body))
 
 

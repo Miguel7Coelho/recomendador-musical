@@ -2,10 +2,10 @@ from typing import Literal
 from uuid import UUID
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
-from app import db, external, recommend
+from app import db, external, lastfm, recommend
 
 SERVICE = "catalog"
 
@@ -67,8 +67,14 @@ class RecommendIn(RecommendOptions):
     features: dict
 
 
+class TrackRef(BaseModel):
+    title: str = Field(min_length=1)
+    artist: str = Field(min_length=1)
+
+
 class ExternalIn(BaseModel):
     features: dict
+    track: TrackRef | None = None  # a música enviada, quando o usuário disse qual é
     exclude_spotify_ids: list[str] = Field([], max_length=50)
     k: int = Field(10, ge=1, le=40)
 
@@ -151,11 +157,22 @@ def recommend_by_track(track_id: UUID, opts: RecommendOptions | None = None) -> 
     return _recommend(opts, query.pop("vec"), query, exclude)
 
 
+@app.get("/songs/search")
+def search_songs(q: str = Query(min_length=2, max_length=100)) -> dict:
+    """Sugestões para o usuário dizer qual música enviou."""
+    try:
+        found = lastfm.search_songs(q, 6)
+    except httpx.HTTPError as e:
+        raise HTTPException(502, "Last.fm indisponível") from e  # a URL do erro contém a chave
+    return {"results": [{"title": title, "artist": artist} for title, artist in found]}
+
+
 @app.post("/recommend/external")
 def recommend_external(req: ExternalIn) -> dict:
     """Faixas do Spotify do mesmo gênero (Last.fm), na faixa de andamento e priorizando o tom."""
     try:
-        return external.recommendations(req.features, req.exclude_spotify_ids, req.k)
+        track = req.track.model_dump() if req.track else None
+        return external.recommendations(req.features, req.exclude_spotify_ids, req.k, track)
     except httpx.HTTPError as e:
         # O texto do erro não vai na resposta: a URL do Last.fm contém a chave da API.
         raise HTTPException(502, "Last.fm, Spotify ou ReccoBeats indisponível") from e

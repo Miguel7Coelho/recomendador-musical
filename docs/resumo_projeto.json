@@ -47,11 +47,12 @@
     "ci": "GitHub Actions: ruff (lint+format), pytest por serviço, job 'db' com Postgres+pgvector"
   },
   "endpoints_gateway": {
-    "POST /analyze": "multipart campo 'file' → 202 {job_id, status, sha, [features], [result]}; 400 áudio inválido/curto (<3 s), 413 > 25 MB",
+    "GET /songs/search?q=": "sugestões do Last.fm para dizer qual música foi enviada → {results: [{title, artist}]}",
+    "POST /analyze": "multipart campo 'file' e opcionais 'title' e 'artist' → 202 {job_id, status, sha, [features], [result]}; 400 áudio inválido/curto (<3 s), 413 > 25 MB",
     "GET /jobs/{job_id}": "{job_id, status: separating|analyzing|searching|done|failed, sha, features?, result?, error?}; job expira em 2 h",
     "POST /jobs/{job_id}/recommend": "refaz a busca no catálogo com a análise guardada no job; corpo opcional RecommendOptions → {results, levels, relaxed, pool}; 404 job expirado, 409 análise não terminou, 503 catálogo fora; não refaz as faixas do Spotify",
     "POST /recommend/track/{track_id}": "mais parecidas com uma faixa do catálogo; corpo opcional RecommendOptions (filtros, k, pesos)",
-    "POST /recommend/spotify/{spotify_id}": "mais parecidas com uma faixa do Spotify; corpo {camelot, bpm, styles, genre_top}",
+    "POST /recommend/spotify/{spotify_id}": "mais parecidas com uma faixa do Spotify; corpo {camelot, bpm, styles, genre_top, track?: {title, artist}}",
     "GET /audio/track/{track_id}": "stream audio/wav do trecho da FMA (só source='fma')",
     "POST /tracks/{track_id}/spotify": "procura a mesma faixa no Spotify → {match | null}",
     "GET /auth/login": "redireciona ao Spotify; volta em FRONTEND_URL/?login=ok|erro|cancelado",
@@ -173,6 +174,11 @@
       "tema": "Áudio da FMA",
       "decisao": "servido pelo gateway com crédito ao artista e licença",
       "motivo": "licenças Creative Commons; várias são NonCommercial (ok para TCC, exige crédito)"
+    },
+    {
+      "tema": "Comportamento dos ouvintes",
+      "decisao": "com a música identificada, as candidatas vêm de track.getSimilar (Last.fm), passam antes das etiquetas e dispensam o filtro de gênero; o BPM continua eliminando",
+      "motivo": "o gosto dos ouvintes é mais confiável que o estilo detectado; beats próprios e faixas sem dados continuam pelas etiquetas"
     },
     {
       "tema": "Candidatas do Spotify",

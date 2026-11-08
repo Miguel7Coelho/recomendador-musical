@@ -20,9 +20,10 @@ async function moreLike(rec: Rec, features: Features): Promise<Similar> {
     const out = await api.moreLikeTrack(rec.track.id);
     return { seed, items: out.results.map(fromCatalog), relaxed: out.relaxed };
   }
-  const { camelot, bpm, spotify_id } = rec.track;
+  const { camelot, bpm, spotify_id, title, artists } = rec.track;
+  const track = artists[0] ? { title, artist: artists[0] } : undefined;
   const { styles, genre_top } = features;
-  const out = await api.moreLikeSpotify(spotify_id, { camelot, bpm, styles, genre_top });
+  const out = await api.moreLikeSpotify(spotify_id, { camelot, bpm, styles, genre_top, track });
   return { seed, items: out.results.map(fromSpotify), relaxed: out.relaxed ?? [] };
 }
 

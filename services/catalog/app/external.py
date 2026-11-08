@@ -1,7 +1,8 @@
 """Candidatas do Spotify escolhidas por gênero (sem áudio para analisarmos).
 
-O gênero vem das etiquetas do Last.fm, a faixa tocável do Spotify e o tom e o andamento da
-ReccoBeats. Gênero e andamento eliminam; tom compatível só melhora a posição.
+Com a música conhecida, a base é o que os ouvintes dela também escutam (Last.fm); senão, as
+etiquetas de gênero do Last.fm. A faixa tocável vem do Spotify e o tom e o andamento da ReccoBeats.
+O andamento elimina; tom compatível só melhora a posição.
 """
 
 import os
@@ -23,6 +24,9 @@ POOL = 80  # faixas procuradas no Spotify por consulta
 MATCH_WORKERS = 6
 BPM_TOLERANCE = 0.10  # dobro e metade do andamento também contam
 MAX_PER_ARTIST = 2
+LISTENER_LIMIT = 100
+LISTENER_POOL = 60  # faixas de ouvintes procuradas no Spotify
+LISTENER_PER_ARTIST = 4  # os primeiros similares costumam ser do próprio artista
 SCORE_WEIGHTS = {"style": 0.60, "bpm": 0.25, "key": 0.15}
 
 # Acima disso a faixa é quase só fala (definição do Spotify para speechiness): audiolivros e
@@ -133,17 +137,37 @@ def _recco_features(spotify_ids: list[str]) -> dict[str, dict]:
     return out
 
 
-def _candidate(track: dict, match: dict, feats: dict, total_weight: float, query: dict) -> dict:
+def _listener_tracks(track: dict) -> list[dict]:
+    """O que quem ouve a faixa também ouve. Sem dados, a recomendação segue pelas etiquetas."""
+    try:
+        similar = lastfm.similar_tracks(track["title"], track["artist"], LISTENER_LIMIT)
+    except httpx.HTTPError:
+        return []
+    own = (track["title"].casefold(), track["artist"].casefold())
+    per_artist: dict[str, int] = {}
+    out = []
+    for position, (title, artist, match) in enumerate(similar):
+        name = artist.casefold()
+        if (title.casefold(), name) == own or per_artist.get(name, 0) >= LISTENER_PER_ARTIST:
+            continue
+        per_artist[name] = per_artist.get(name, 0) + 1
+        out.append(
+            {"title": title, "artist": artist, "weight": match, "order": position, "tags": []}
+        )
+    return out[:LISTENER_POOL]
+
+
+def _candidate(track: dict, match: dict, feats: dict, scale: float, tier: int, query: dict) -> dict:
     camelot = camelot_from_pitch(feats.get("key"), feats.get("mode"))
     key = recommend.key_match(query.get("camelot"), camelot)
     q_bpm = query.get("bpm")
     distance = recommend.bpm_ratio(feats["tempo"], q_bpm) if q_bpm else 0.0
     parts = {
-        "style": min(track["weight"] / total_weight, 1.0),
+        "style": min(track["weight"] / scale, 1.0),
         "bpm": max(1 - distance / BPM_TOLERANCE, 0.0),
         "key": key,
     }
-    why = [track["tags"][0]]
+    why = [track["tags"][0] if track["tags"] else "ouvintes também escutam"]
     if q_bpm:
         why.append(f"{feats['tempo']:.0f} vs. {q_bpm:.0f} BPM")
     if key:
@@ -158,27 +182,22 @@ def _candidate(track: dict, match: dict, feats: dict, total_weight: float, query
         "bpm": feats["tempo"],
         "explanation": " · ".join(why),
         "score": round(sum(SCORE_WEIGHTS[name] * value for name, value in parts.items()), 4),
+        "_tier": tier,
         "_distance": distance,
         "_order": track["order"],
     }
 
 
-def recommendations(features: dict, exclude_ids: list[str], k: int) -> dict:
-    tags = style_tags(features)
-    if not tags:
-        return {"results": [], "tags": [], "relaxed": []}
-
-    matches = [
-        (track, match)
-        for track, match in _find_on_spotify(_tagged_tracks(tags))
-        if match["spotify_id"] not in exclude_ids
-    ]
+def _screen(
+    tracks: list[dict], scale: float, tier: int, query: dict, exclude: list[str], seen: tuple
+) -> list[dict]:
+    """Localiza no Spotify e elimina o que está fora do andamento ou não é música."""
+    seen_ids, seen_audio = seen
+    matches = [(t, m) for t, m in _find_on_spotify(tracks) if m["spotify_id"] not in exclude]
     audio = _recco_features(list({m["spotify_id"] for _, m in matches}))
-    total_weight = sum(tags.values())
-    q_bpm = features.get("bpm")
+    q_bpm = query.get("bpm")
 
     cands = []
-    seen_ids, seen_audio = set(), set()
     for track, match in matches:
         sid = match["spotify_id"]
         f = audio.get(sid)
@@ -194,16 +213,42 @@ def recommendations(features: dict, exclude_ids: list[str], k: int) -> dict:
             if fingerprint in seen_audio:
                 continue
             seen_audio.add(fingerprint)
-        cands.append(_candidate(track, match, f, total_weight, features))
+        cands.append(_candidate(track, match, f, scale, tier, query))
+    return cands
 
+
+def _pick(cands: list[dict], k: int) -> list[dict]:
+    """Primeiro o que vem dos ouvintes, depois a pontuação, sem repetir demais o artista."""
     results: list[dict] = []
     per_artist: dict[str, int] = {}
-    for c in sorted(cands, key=lambda c: (-c["score"], c["_distance"], c["_order"])):
+    for c in sorted(cands, key=lambda c: (c["_tier"], -c["score"], c["_distance"], c["_order"])):
         lead = c["artists"][0].casefold()
         if per_artist.get(lead, 0) >= MAX_PER_ARTIST:
             continue
         per_artist[lead] = per_artist.get(lead, 0) + 1
-        results.append({name: v for name, v in c.items() if not name.startswith("_")})
+        results.append(c)
         if len(results) == k:
             break
+    return results
+
+
+def recommendations(
+    features: dict, exclude_ids: list[str], k: int, track: dict | None = None
+) -> dict:
+    """Com a música conhecida, o gosto dos ouvintes vale mais que o estilo detectado e dispensa
+    o filtro de gênero; as etiquetas só completam a lista."""
+    seen: tuple[set, set] = (set(), set())
+    cands: list[dict] = []
+    if track:
+        listeners = _listener_tracks(track)
+        scale = max((t["weight"] for t in listeners), default=1.0)
+        cands = _screen(listeners, scale, 0, features, exclude_ids, seen)
+
+    tags = style_tags(features) if len(_pick(cands, k)) < k else {}
+    if tags:
+        cands += _screen(_tagged_tracks(tags), sum(tags.values()), 1, features, exclude_ids, seen)
+
+    results = [
+        {name: v for name, v in c.items() if not name.startswith("_")} for c in _pick(cands, k)
+    ]
     return {"results": results, "tags": list(tags), "relaxed": []}

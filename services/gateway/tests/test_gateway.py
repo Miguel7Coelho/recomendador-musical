@@ -68,6 +68,8 @@ class Services:
                 if self.external_relaxed:
                     out["relaxed"] = self.external_relaxed
                 return httpx.Response(200, json=out)
+            if path == "/songs/search":
+                return httpx.Response(200, json={"results": [{"title": "T", "artist": "A"}]})
             if path == f"/tracks/{FMA_ID}":
                 return httpx.Response(200, json={"id": FMA_ID, "source": "fma", "audio_sha": SHA,
                                                  "title": "Food", "artist": "AWOL"})  # fmt: skip
@@ -164,6 +166,36 @@ def test_relaxamento_do_spotify_chega_ao_front(setup) -> None:
     result = upload(c).json()["result"]
     assert result["spotify_relaxed"] == ["key: compatible → off"]
     assert result["relaxed"] == ["key: exact → off"]  # o do catálogo continua separado
+
+
+def _external_body(svc) -> dict:
+    return json.loads(next(x for x in svc.calls if x.url.path == "/recommend/external").content)
+
+
+def test_musica_informada_chega_a_busca_do_spotify(setup) -> None:
+    c, svc = setup()
+    files = {"file": ("x.mp3", b"audio", "audio/mpeg")}
+    r = c.post("/analyze", files=files, data={"title": "Stronger", "artist": "Kanye West"})
+    assert r.json()["status"] == "done" and "track" not in r.json()
+    assert _external_body(svc)["track"] == {"title": "Stronger", "artist": "Kanye West"}
+
+
+def test_sem_musica_informada_nao_envia_track(setup) -> None:
+    c, svc = setup()
+    upload(c)
+    assert "track" not in _external_body(svc)
+
+
+def test_busca_de_musicas_e_mais_parecidas_com_nome(setup) -> None:
+    c, svc = setup()
+    assert c.get("/songs/search", params={"q": "stro"}).json()["results"][0]["title"] == "T"
+    seed = {"bpm": 90, "track": {"title": "T", "artist": "A"}}
+    c.post("/recommend/spotify/abc", json=seed)
+    assert _external_body(svc) == {
+        "features": {"bpm": 90},
+        "exclude_spotify_ids": ["abc"],
+        "track": {"title": "T", "artist": "A"},
+    }
 
 
 def test_erro_da_separacao_e_repassado(setup) -> None:

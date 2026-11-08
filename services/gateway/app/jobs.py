@@ -24,9 +24,11 @@ def load(job_id: str) -> dict | None:
     return json.loads(raw) if raw else None
 
 
-def new(separation: dict) -> dict:
+def new(separation: dict, track: dict | None = None) -> dict:
     """Cria o job a partir da resposta do POST /separate (cache ou tarefa na fila)."""
     job = {"id": str(uuid.uuid4()), "sha": separation["sha"]}
+    if track:
+        job["track"] = track
     if separation["status"] == "done":
         job["stage"] = "analyzing"
     else:
@@ -84,7 +86,10 @@ def _searching(job: dict) -> dict:
         "spotify": [],
     }
     # O Spotify (via ReccoBeats) é um extra: se falhar, o resultado do catálogo segue valendo.
-    ext = clients.http().post(f"{CATALOG_URL}/recommend/external", json={"features": features})
+    ext_body = {"features": features}
+    if job.get("track"):
+        ext_body["track"] = job["track"]
+    ext = clients.http().post(f"{CATALOG_URL}/recommend/external", json=ext_body)
     if ext.status_code == 200:
         result["spotify"] = ext.json()["results"]
         result["spotify_relaxed"] = ext.json().get("relaxed", [])

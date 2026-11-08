@@ -5,6 +5,7 @@ import type {
   Me,
   NewPlaylist,
   RecommendOptions,
+  Song,
   SpotifyMatch,
   SpotifyTrack,
 } from "./types";
@@ -48,9 +49,16 @@ function postJson<T>(path: string, body?: unknown): Promise<T> {
 export const api = {
   health: () => request<{ status: string; service: string }>("/health"),
 
-  analyze: (file: Blob, filename: string) => {
+  searchSongs: (q: string) =>
+    request<{ results: Song[] }>(`/songs/search?${new URLSearchParams({ q })}`),
+
+  analyze: (file: Blob, filename: string, song?: Song) => {
     const form = new FormData();
     form.append("file", file, filename);
+    if (song) {
+      form.append("title", song.title);
+      form.append("artist", song.artist);
+    }
     return request<Job>("/analyze", { method: "POST", body: form });
   },
   job: (jobId: string) => request<Job>(`/jobs/${jobId}`),
@@ -59,7 +67,7 @@ export const api = {
 
   moreLikeTrack: (trackId: string, options?: RecommendOptions) =>
     postJson<CatalogRecommendation>(`/recommend/track/${trackId}`, options),
-  moreLikeSpotify: (spotifyId: string, seed: Pick<Features, "camelot" | "bpm" | "styles" | "genre_top">) =>
+  moreLikeSpotify: (spotifyId: string, seed: Pick<Features, "camelot" | "bpm" | "styles" | "genre_top"> & { track?: Song }) =>
     postJson<{ results: SpotifyTrack[]; relaxed?: string[] }>(`/recommend/spotify/${spotifyId}`, seed),
 
   matchOnSpotify: (trackId: string) =>

@@ -51,7 +51,9 @@ AUDIO = {
     "broad": (0, 1, 100.0),
     "folky": (6, 0, 100.0),
 }
-ARTIST = {"bro1": "Bros", "bro2": "Bros", "bro3": "Bros"}
+ARTIST = {"bro1": "Bros", "bro2": "Bros", "bro3": "Bros", "Seed": "Fulano"}
+SIMILAR = [("Seed", 1.0), ("folky", 0.8), ("fast", 0.7), ("samekey", 0.4)]
+KNOWN = {"title": "Seed", "artist": "Fulano"}
 
 
 @pytest.fixture
@@ -61,6 +63,20 @@ def fake(monkeypatch):
     def handler(req: httpx.Request) -> httpx.Response:
         calls.append(req)
         if req.url.host == "ws.audioscrobbler.com":
+            if req.url.params["method"] == "track.getsimilar":
+                if req.url.params["artist"] == "Desconhecido":
+                    return httpx.Response(400, json={"error": 6})
+                items = [{"name": n, "artist": {"name": ARTIST.get(n, f"Artista {n}")},
+                          "match": str(m)} for n, m in SIMILAR]  # fmt: skip
+                return httpx.Response(200, json={"similartracks": {"track": items}})
+            if req.url.params["method"] == "track.search":
+                items = [
+                    {"name": "kanye-stronger", "artist": "x", "listeners": "5"},
+                    {"name": "lixo", "artist": "<Unknown>", "listeners": "50"},
+                    {"name": "STRONGER", "artist": "kanye west", "listeners": "9"},
+                    {"name": "Stronger", "artist": "Kanye West", "listeners": "900"},
+                ]
+                return httpx.Response(200, json={"results": {"trackmatches": {"track": items}}})
             names = TAGS.get(req.url.params["tag"], [])
             items = [{"name": n, "artist": {"name": ARTIST.get(n, f"Artista {n}")}} for n in names]
             return httpx.Response(200, json={"tracks": {"track": items}})
@@ -86,6 +102,8 @@ def fake(monkeypatch):
     monkeypatch.setattr(external, "client", lambda: http)
     monkeypatch.setattr(lastfm, "client", lambda: http)
     lastfm.top_tracks.cache_clear()
+    lastfm.similar_tracks.cache_clear()
+    lastfm.search_songs.cache_clear()
     external._spotify_match.cache_clear()
     return calls
 
@@ -159,6 +177,42 @@ def test_descarta_ruido_e_audio_repetido(monkeypatch) -> None:
     monkeypatch.setattr(external, "_recco_features", lambda ids: feats)
 
     assert _ids(external.recommendations({"bpm": 100.0}, [], k=10)) == ["a", "c"]
+
+
+def test_ouvintes_vem_primeiro_e_dispensam_o_genero(fake) -> None:
+    results = external.recommendations(QUERY, [], k=2, track=KNOWN)["results"]
+    assert [r["spotify_id"] for r in results] == ["folky", "samekey"]  # folk entra pelos ouvintes
+    assert results[0]["explanation"].startswith("ouvintes também escutam")
+
+
+def test_ouvintes_respeitam_o_andamento_e_a_propria_faixa_sai(fake) -> None:
+    ids = _ids(external.recommendations(QUERY, [], k=20, track=KNOWN))
+    assert "fast" not in ids and "Seed" not in ids
+
+
+def test_etiquetas_completam_a_lista(fake) -> None:
+    ids = _ids(external.recommendations(QUERY, [], k=20, track=KNOWN))
+    assert ids[:2] == ["folky", "samekey"] and "both" in ids
+
+
+def test_lista_cheia_nao_consulta_etiquetas(fake) -> None:
+    external.recommendations(QUERY, [], k=2, track=KNOWN)
+    assert not any(c.url.params.get("method") == "tag.gettoptracks" for c in fake)
+
+
+def test_musica_sem_dados_usa_etiquetas(fake) -> None:
+    track = {"title": "Beat", "artist": "Desconhecido"}
+    assert _ids(external.recommendations(QUERY, [], k=1, track=track)) == ["both"]
+
+
+def test_busca_de_musicas_sem_repetir(fake) -> None:
+    r = TestClient(main.app).get("/songs/search", params={"q": "stro"})
+    assert r.json() == {
+        "results": [
+            {"title": "Stronger", "artist": "Kanye West"},
+            {"title": "kanye-stronger", "artist": "x"},
+        ]
+    }
 
 
 def test_sem_estilos_nao_recomenda(fake) -> None:

@@ -2,8 +2,9 @@ import { useMutation } from "@tanstack/react-query";
 import { useState, type DragEvent } from "react";
 
 import { api, ApiError } from "../api/client";
-import type { Job } from "../api/types";
+import type { Job, Song } from "../api/types";
 import { MAX_RECORDING_S, useRecorder } from "../hooks/useRecorder";
+import { SongField } from "./SongField";
 import { Button, Label, Notice } from "./ui";
 
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -14,33 +15,80 @@ function uploadError(error: unknown): string {
   return "Não foi possível falar com o servidor. Tente de novo.";
 }
 
+/** "Artista - Música.mp3" → "Artista Música"; nomes em outro formato não dizem nada. */
+function guessFromFilename(name: string): string {
+  const base = name.replace(/\.[^.]+$/, "").replace(/_/g, " ");
+  return base.includes(" - ") ? base.replace(/ - /g, " ").trim() : "";
+}
+
+type Pending = { audio: Blob; name: string; guess: string };
+
 export function Entry({ onStarted }: { onStarted: (job: Job) => void }) {
   const [localError, setLocalError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [pending, setPending] = useState<Pending | null>(null);
+  const [song, setSong] = useState<Song | null>(null);
   const upload = useMutation({
-    mutationFn: ({ audio, name }: { audio: Blob; name: string }) => api.analyze(audio, name),
+    mutationFn: ({ audio, name }: Pending) => api.analyze(audio, name, song ?? undefined),
     onSuccess: onStarted,
   });
-  const recorder = useRecorder((audio) => upload.mutate({ audio, name: "gravacao.webm" }));
 
-  function send(file: File | undefined) {
+  function choose(next: Pending) {
+    setLocalError(null);
+    setSong(null);
+    upload.reset();
+    setPending(next);
+  }
+
+  const recorder = useRecorder((audio) => choose({ audio, name: "gravacao.webm", guess: "" }));
+
+  function pick(file: File | undefined) {
     if (!file) return;
     if (file.size > MAX_BYTES) {
       setLocalError(TOO_BIG);
       return;
     }
-    setLocalError(null);
-    upload.mutate({ audio: file, name: file.name });
+    choose({ audio: file, name: file.name, guess: guessFromFilename(file.name) });
   }
 
   function onDrop(e: DragEvent) {
     e.preventDefault();
     setDragging(false);
-    send(e.dataTransfer.files[0]);
+    pick(e.dataTransfer.files[0]);
   }
 
   const error = localError ?? recorder.error ?? (upload.isError ? uploadError(upload.error) : null);
-  const busy = upload.isPending || recorder.recording;
+  const notice = error && (
+    <div className="mt-6">
+      <Notice tone="danger">{error}</Notice>
+    </div>
+  );
+
+  if (pending) {
+    return (
+      <section className="mx-auto max-w-xl pt-12">
+        <h2 className="text-title font-semibold">Pronto para analisar</h2>
+        <div className="mt-6 space-y-6 bg-surface p-6">
+          <div>
+            <Label>Áudio</Label>
+            <p className="mt-1 break-words">{pending.name}</p>
+          </div>
+          <SongField key={pending.name} initialQuery={pending.guess} value={song} onChange={setSong} />
+          <div className="flex flex-wrap gap-2">
+            <Button variant="primary" onClick={() => upload.mutate(pending)} disabled={upload.isPending}>
+              {upload.isPending ? "Enviando…" : "Analisar"}
+            </Button>
+            <Button onClick={() => setPending(null)} disabled={upload.isPending}>
+              Escolher outro áudio
+            </Button>
+          </div>
+        </div>
+        {notice}
+      </section>
+    );
+  }
+
+  const busy = recorder.recording;
 
   return (
     <section className="mx-auto max-w-xl pt-12">
@@ -66,11 +114,11 @@ export function Entry({ onStarted }: { onStarted: (job: Job) => void }) {
           className="sr-only"
           disabled={busy}
           onChange={(e) => {
-            send(e.target.files?.[0]);
+            pick(e.target.files?.[0]);
             e.target.value = "";
           }}
         />
-        <span className="font-medium">{upload.isPending ? "Enviando…" : "Escolha um arquivo de áudio"}</span>
+        <span className="font-medium">Escolha um arquivo de áudio</span>
         <span className="mt-1 block text-small text-muted">ou arraste para cá · até 25 MB · mínimo de 3 s</span>
       </label>
 
@@ -78,7 +126,7 @@ export function Entry({ onStarted }: { onStarted: (job: Job) => void }) {
         {recorder.recording ? (
           <>
             <Button variant="primary" onClick={recorder.stop} disabled={!recorder.canStop}>
-              Parar e analisar
+              Parar gravação
             </Button>
             <span className="font-mono text-small tabular-nums" role="timer">
               <Label>Gravando</Label> {Math.floor(recorder.elapsed)} / {MAX_RECORDING_S} s
@@ -86,19 +134,13 @@ export function Entry({ onStarted }: { onStarted: (job: Job) => void }) {
           </>
         ) : (
           <>
-            <Button onClick={recorder.start} disabled={upload.isPending}>
-              Gravar pelo microfone
-            </Button>
+            <Button onClick={recorder.start}>Gravar pelo microfone</Button>
             <span className="text-small text-muted">Grava até {MAX_RECORDING_S} s</span>
           </>
         )}
       </div>
 
-      {error && (
-        <div className="mt-6">
-          <Notice tone="danger">{error}</Notice>
-        </div>
-      )}
+      {notice}
     </section>
   );
 }
