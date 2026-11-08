@@ -25,6 +25,16 @@ docker compose ps         # todos "healthy" (o s3 aparece só como "running")
 
 Todos respondem em `GET /health`.
 
+## Front-end
+
+```bash
+cd frontend
+npm install
+npm run dev               # abrir http://127.0.0.1:5173 (nunca localhost)
+```
+
+O visual segue `frontend/DESIGN.md`.
+
 ## Testes de um serviço
 
 ```bash
