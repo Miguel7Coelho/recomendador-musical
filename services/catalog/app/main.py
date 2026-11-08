@@ -72,6 +72,10 @@ class TrackRef(BaseModel):
     artist: str = Field(min_length=1)
 
 
+class SongIn(TrackRef):
+    k: int = Field(20, ge=1, le=40)
+
+
 class ExternalIn(BaseModel):
     features: dict
     track: TrackRef | None = None  # a música enviada, quando o usuário disse qual é
@@ -165,6 +169,15 @@ def search_songs(q: str = Query(min_length=2, max_length=100)) -> dict:
     except httpx.HTTPError as e:
         raise HTTPException(502, "Last.fm indisponível") from e  # a URL do erro contém a chave
     return {"results": [{"title": title, "artist": artist} for title, artist in found]}
+
+
+@app.post("/recommend/song")
+def recommend_song(req: SongIn) -> dict:
+    """Faixas parecidas com uma música pesquisada, sem áudio enviado."""
+    try:
+        return external.song_recommendations(req.title, req.artist, req.k)
+    except httpx.HTTPError as e:
+        raise HTTPException(502, "Last.fm, Spotify ou ReccoBeats indisponível") from e
 
 
 @app.post("/recommend/external")

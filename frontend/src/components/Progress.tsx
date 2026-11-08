@@ -35,12 +35,14 @@ export function Progress({ status }: { status: JobStatus }) {
   );
 }
 
-export function Failed({ message, onRetry }: { message: string; onRetry: () => void }) {
+type FailedProps = { message: string; onRetry: () => void; retryLabel?: string };
+
+export function Failed({ message, onRetry, retryLabel = "Enviar outra faixa" }: FailedProps) {
   return (
     <section className="mx-auto max-w-xl pt-12">
       <Notice tone="danger">{message}</Notice>
       <Button variant="primary" className="mt-6" onClick={onRetry}>
-        Enviar outra faixa
+        {retryLabel}
       </Button>
     </section>
   );

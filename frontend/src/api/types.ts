@@ -110,6 +110,10 @@ export type CatalogRecommendation = {
 
 export type Song = { title: string; artist: string };
 
+export type SongProfile = Song & { camelot: string | null; bpm: number | null; tags: string[] };
+
+export type SongRecommendation = { song: SongProfile; results: SpotifyTrack[] };
+
 export type SpotifyMatch = { spotify_id: string } & Record<string, unknown>;
 
 export type Me = { spotify_user_id: string; display_name: string | null };

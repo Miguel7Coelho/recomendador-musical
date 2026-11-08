@@ -23,7 +23,9 @@ function guessFromFilename(name: string): string {
 
 type Pending = { audio: Blob; name: string; guess: string };
 
-export function Entry({ onStarted }: { onStarted: (job: Job) => void }) {
+type EntryProps = { onStarted: (job: Job) => void; onSearch: (song: Song) => void };
+
+export function Entry({ onStarted, onSearch }: EntryProps) {
   const [localError, setLocalError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
@@ -130,7 +132,7 @@ export function Entry({ onStarted }: { onStarted: (job: Job) => void }) {
       </div>
 
       <div className="mt-6">
-        <SongField key={pending?.guess ?? ""} initialQuery={pending?.guess ?? ""} value={song} onChange={setSong} />
+        <SongField key={pending?.guess ?? ""} initialQuery={pending?.guess ?? ""} value={song} onChange={setSong} onSearch={pending ? undefined : onSearch} />
       </div>
 
       {pending && (

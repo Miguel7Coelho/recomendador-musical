@@ -45,6 +45,7 @@ AUDIO = {
     "samekey": (6, 0, 104.0),  # 11A
     "fast": (6, 0, 140.0),  # 11A, mas fora da faixa de andamento
     "speech": (6, 0, 100.0),
+    "Seed": (6, 0, 100.0),
     "bro1": (0, 1, 101.0),
     "bro2": (0, 1, 102.0),
     "bro3": (0, 1, 103.0),
@@ -69,6 +70,9 @@ def fake(monkeypatch):
                 items = [{"name": n, "artist": {"name": ARTIST.get(n, f"Artista {n}")},
                           "match": str(m)} for n, m in SIMILAR]  # fmt: skip
                 return httpx.Response(200, json={"similartracks": {"track": items}})
+            if req.url.params["method"] == "track.gettoptags":
+                tags = [{"name": n} for n in ["Fulano", "hip-hop", "rap", "west coast", "Seed"]]
+                return httpx.Response(200, json={"toptags": {"tag": tags}})
             if req.url.params["method"] == "track.search":
                 items = [
                     {"name": "kanye-stronger", "artist": "x", "listeners": "5"},
@@ -103,6 +107,7 @@ def fake(monkeypatch):
     monkeypatch.setattr(lastfm, "client", lambda: http)
     lastfm.top_tracks.cache_clear()
     lastfm.similar_tracks.cache_clear()
+    lastfm.top_tags.cache_clear()
     lastfm.search_songs.cache_clear()
     external._spotify_match.cache_clear()
     return calls
@@ -213,6 +218,32 @@ def test_busca_de_musicas_sem_repetir(fake) -> None:
             {"title": "kanye-stronger", "artist": "x"},
         ]
     }
+
+
+def test_pesquisa_usa_tom_e_andamento_da_musica(fake) -> None:
+    out = external.song_recommendations("Seed", "Fulano", k=2)
+    assert out["song"] == {"title": "Seed", "artist": "Fulano", "camelot": "11A", "bpm": 100.0,
+                           "tags": ["hip-hop", "rap", "west coast"]}  # fmt: skip
+    assert _ids(out) == ["folky", "samekey"]  # "fast" fica fora do andamento da música
+
+
+def test_pesquisa_sem_dados_de_andamento_nao_filtra(fake) -> None:
+    out = external.song_recommendations("absent", "Fulano", k=20)
+    assert out["song"]["bpm"] is None and "fast" in _ids(out)
+
+
+def test_pesquisa_completa_com_as_etiquetas_da_musica(fake) -> None:
+    ids = _ids(external.song_recommendations("Seed", "Fulano", k=20))
+    assert ids[:2] == ["folky", "samekey"] and "broad" in ids  # veio da etiqueta hip-hop
+
+
+def test_endpoint_da_pesquisa_nao_vaza_a_chave(fake, monkeypatch) -> None:
+    def boom(*a):
+        raise httpx.ConnectError("https://ws.audioscrobbler.com/2.0/?api_key=SEGREDO")
+
+    monkeypatch.setattr(external, "song_recommendations", boom)
+    r = TestClient(main.app).post("/recommend/song", json={"title": "A", "artist": "B"})
+    assert r.status_code == 502 and "SEGREDO" not in r.text
 
 
 def test_sem_estilos_nao_recomenda(fake) -> None:

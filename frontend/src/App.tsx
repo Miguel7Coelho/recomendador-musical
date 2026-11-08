@@ -8,6 +8,8 @@ import { Entry } from "./components/Entry";
 import { Favorites } from "./components/Favorites";
 import { Failed, Progress } from "./components/Progress";
 import { Results } from "./components/Results";
+import { SongResults } from "./components/SongResults";
+import { SourceTrack } from "./components/SourceTrack";
 import { Button, Notice } from "./components/ui";
 import { useSession } from "./store";
 
@@ -38,7 +40,8 @@ function Screen({ jobId, onReset }: { jobId: string; onReset: () => void }) {
     return <Failed message={job.data.error ?? "A análise falhou."} onRetry={onReset} />;
   }
   if (job.data.status === "done" && job.data.features && job.data.result) {
-    return <Results jobId={jobId} features={job.data.features} result={job.data.result} />;
+    const { features, result } = job.data;
+    return <Results jobId={jobId} features={features} source={<SourceTrack features={features} />} result={result} />;
   }
   return <Progress status={job.data.status} />;
 }
@@ -75,7 +78,7 @@ const LOGIN_MESSAGES: Record<string, { tone: "info" | "danger"; text: string }> 
 };
 
 export function App() {
-  const { jobId, setJob, favorites } = useSession();
+  const { jobId, song, setJob, searchSong, reset, favorites } = useSession();
   const queryClient = useQueryClient();
   const [showFavorites, setShowFavorites] = useState(false);
   const [login, setLogin] = useState(() => new URLSearchParams(window.location.search).get("login"));
@@ -99,7 +102,7 @@ export function App() {
         <h1 className="font-mono text-small font-medium">
           <button
             type="button"
-            onClick={() => setJob(null)}
+            onClick={reset}
             className="min-h-11 cursor-pointer rounded-sm transition-colors duration-100 hover:text-accent"
           >
             Recomendador musical
@@ -108,7 +111,7 @@ export function App() {
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={() => setShowFavorites(true)}>Favoritas · {Object.keys(favorites).length}</Button>
           <Account />
-          {jobId && <Button onClick={() => setJob(null)}>Nova análise</Button>}
+          {(jobId || song) && <Button onClick={reset}>Nova análise</Button>}
         </div>
       </header>
       {loginMessage && (
@@ -119,7 +122,13 @@ export function App() {
         </div>
       )}
       <main className="pt-8">
-        {jobId ? <Screen key={jobId} jobId={jobId} onReset={() => setJob(null)} /> : <Entry onStarted={started} />}
+        {jobId ? (
+          <Screen key={jobId} jobId={jobId} onReset={reset} />
+        ) : song ? (
+          <SongResults key={`${song.title}|${song.artist}`} song={song} onReset={reset} />
+        ) : (
+          <Entry onStarted={started} onSearch={searchSong} />
+        )}
       </main>
       <Drawer open={showFavorites} onClose={() => setShowFavorites(false)} title="Favoritas">
         <Favorites />

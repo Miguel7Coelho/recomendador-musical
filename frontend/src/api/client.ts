@@ -6,6 +6,7 @@ import type {
   NewPlaylist,
   RecommendOptions,
   Song,
+  SongRecommendation,
   SpotifyMatch,
   SpotifyTrack,
 } from "./types";
@@ -52,6 +53,8 @@ export const api = {
   searchSongs: (q: string) =>
     request<{ results: Song[] }>(`/songs/search?${new URLSearchParams({ q })}`),
 
+  recommendSong: (song: Song) => postJson<SongRecommendation>("/songs/recommend", song),
+
   analyze: (file: Blob, filename: string, song?: Song) => {
     const form = new FormData();
     form.append("file", file, filename);
@@ -67,7 +70,7 @@ export const api = {
 
   moreLikeTrack: (trackId: string, options?: RecommendOptions) =>
     postJson<CatalogRecommendation>(`/recommend/track/${trackId}`, options),
-  moreLikeSpotify: (spotifyId: string, seed: Pick<Features, "camelot" | "bpm" | "styles" | "genre_top"> & { track?: Song }) =>
+  moreLikeSpotify: (spotifyId: string, seed: Pick<Features, "camelot" | "bpm"> & Partial<Pick<Features, "styles" | "genre_top">> & { track?: Song }) =>
     postJson<{ results: SpotifyTrack[]; relaxed?: string[] }>(`/recommend/spotify/${spotifyId}`, seed),
 
   matchOnSpotify: (trackId: string) =>

@@ -78,3 +78,13 @@ def search_songs(query: str, limit: int) -> tuple[tuple[str, str], ...]:
             continue
         seen.setdefault((t["name"].casefold(), t["artist"].casefold()), (t["name"], t["artist"]))
     return tuple(seen.values())
+
+
+@lru_cache(maxsize=2048)
+def top_tags(title: str, artist: str) -> tuple[str, ...]:
+    """Etiquetas da faixa, sem as que só repetem o nome do artista ou da música."""
+    params = {"method": "track.gettoptags", "track": title, "artist": artist}
+    params |= {"autocorrect": 1, "api_key": API_KEY, "format": "json"}
+    r = client().get(API, params=params).raise_for_status()
+    names = [t["name"] for t in _as_list(r.json().get("toptags", {}).get("tag", []))]
+    return tuple(n for n in names if n.casefold() not in (artist.casefold(), title.casefold()))

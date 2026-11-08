@@ -24,6 +24,7 @@ POOL = 30  # faixas procuradas no Spotify por consulta: cada uma gasta o limite 
 MATCH_WORKERS = 2
 BPM_TOLERANCE = 0.10  # dobro e metade do andamento também contam
 MAX_PER_ARTIST = 2
+SONG_FILL_TAGS = 3  # etiquetas que completam a lista numa pesquisa sem áudio
 LISTENER_LIMIT = 100
 LISTENER_POOL = 30  # faixas de ouvintes procuradas no Spotify
 LISTENER_PER_ARTIST = 4  # os primeiros similares costumam ser do próprio artista
@@ -71,6 +72,8 @@ def _spotify_id(href: str) -> str:
 def style_tags(features: dict) -> dict[str, float]:
     """Etiquetas a procurar e seu peso. Só estilos do gênero principal, para que um palpite
     fraco do classificador não traga folk ou latina para uma faixa de hip-hop."""
+    if features.get("lastfm_tags"):  # pesquisa sem áudio: as etiquetas já vêm prontas
+        return features["lastfm_tags"]
     genre = features.get("genre_top")
     styles = sorted((features.get("styles") or {}).items(), key=lambda s: -s[1])
     kept = [
@@ -252,3 +255,22 @@ def recommendations(
         {name: v for name, v in c.items() if not name.startswith("_")} for c in _pick(cands, k)
     ]
     return {"results": results, "tags": list(tags), "relaxed": []}
+
+
+def song_recommendations(title: str, artist: str, k: int) -> dict:
+    """Pesquisa sem áudio: tom e andamento vêm da própria música quando a ReccoBeats a conhece."""
+    match = _spotify_match(title, artist)
+    sid = match["spotify_id"] if match else None
+    feats = _recco_features([sid]).get(sid, {}) if sid else {}
+    camelot = camelot_from_pitch(feats.get("key"), feats.get("mode"))
+    bpm = feats.get("tempo")
+    try:
+        tags = list(lastfm.top_tags(title, artist))
+    except httpx.HTTPError:
+        tags = []
+
+    query = {"camelot": camelot, "bpm": bpm}
+    query["lastfm_tags"] = {t: 1 / (i + 1) for i, t in enumerate(tags[:SONG_FILL_TAGS])}
+    out = recommendations(query, [sid] if sid else [], k, {"title": title, "artist": artist})
+    song = {"title": title, "artist": artist, "camelot": camelot, "bpm": bpm, "tags": tags[:6]}
+    return {"song": song, "results": out["results"]}

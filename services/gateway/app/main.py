@@ -104,6 +104,11 @@ def search_songs(q: str) -> dict:
     return _ok(clients.http().get(f"{CATALOG_URL}/songs/search", params={"q": q}))
 
 
+@app.post("/songs/recommend")
+def recommend_song(song: dict = Body(...)) -> dict:
+    return _ok(clients.http().post(f"{CATALOG_URL}/recommend/song", json=song))
+
+
 # --- Mais recomendações ----------------------------------------------------------------------
 
 

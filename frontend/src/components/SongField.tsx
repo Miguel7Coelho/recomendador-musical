@@ -7,9 +7,15 @@ import { Button, Label } from "./ui";
 
 const DEBOUNCE_MS = 300;
 
-type SongFieldProps = { initialQuery: string; value: Song | null; onChange: (song: Song | null) => void };
+type SongFieldProps = {
+  initialQuery: string;
+  value: Song | null;
+  onChange: (song: Song | null) => void;
+  /** Sem áudio escolhido, a música pesquisada já é o ponto de partida. */
+  onSearch?: (song: Song) => void;
+};
 
-export function SongField({ initialQuery, value, onChange }: SongFieldProps) {
+export function SongField({ initialQuery, value, onChange, onSearch }: SongFieldProps) {
   const [query, setQuery] = useState(initialQuery);
   const [debounced, setDebounced] = useState(initialQuery);
 
@@ -36,7 +42,23 @@ export function SongField({ initialQuery, value, onChange }: SongFieldProps) {
             <p className="font-medium break-words">{value.title}</p>
             <p className="text-small text-muted">{value.artist}</p>
           </div>
-          <Button onClick={() => onChange(null)}>Trocar</Button>
+          <div className="flex shrink-0 items-center gap-2">
+            {onSearch && (
+              <Button variant="primary" onClick={() => onSearch(value)}>
+                Procurar
+              </Button>
+            )}
+            <button
+              type="button"
+              aria-label="Limpar música"
+              onClick={() => onChange(null)}
+              className="flex size-8 cursor-pointer items-center justify-center rounded-sm text-muted transition-colors duration-100 hover:bg-surface hover:text-text"
+            >
+              <svg viewBox="0 0 16 16" className="size-3 stroke-current" strokeWidth={2} aria-hidden>
+                <path d="M2 2l12 12M14 2L2 14" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -46,7 +68,7 @@ export function SongField({ initialQuery, value, onChange }: SongFieldProps) {
   return (
     <div>
       <label className="block">
-        <Label>Ou pesquise a música aqui (opcional)</Label>
+        <Label>Ou pesquise uma música</Label>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -56,7 +78,7 @@ export function SongField({ initialQuery, value, onChange }: SongFieldProps) {
         />
       </label>
       <p className="mt-1 text-small text-muted">
-        Com o áudio dela, usamos o que os ouvintes também escutam.
+        Encontramos faixas parecidas pelo que os ouvintes dela também escutam.
       </p>
       {results.length > 0 && (
         <ul className="mt-2 divide-y divide-line border-y border-line" aria-label="Sugestões">

@@ -68,6 +68,9 @@ class Services:
                 if self.external_relaxed:
                     out["relaxed"] = self.external_relaxed
                 return httpx.Response(200, json=out)
+            if path == "/recommend/song":
+                body = {"song": json.loads(req.content), "results": [{"spotify_id": "s1"}]}
+                return httpx.Response(200, json=body)
             if path == "/songs/search":
                 return httpx.Response(200, json={"results": [{"title": "T", "artist": "A"}]})
             if path == f"/tracks/{FMA_ID}":
@@ -196,6 +199,13 @@ def test_busca_de_musicas_e_mais_parecidas_com_nome(setup) -> None:
         "exclude_spotify_ids": ["abc"],
         "track": {"title": "T", "artist": "A"},
     }
+
+
+def test_pesquisa_sem_audio(setup) -> None:
+    c, _ = setup()
+    song = {"title": "Stronger", "artist": "Kanye West"}
+    r = c.post("/songs/recommend", json=song).json()
+    assert r["song"] == song and r["results"] == [{"spotify_id": "s1"}]
 
 
 def test_erro_da_separacao_e_repassado(setup) -> None:
