@@ -16,10 +16,10 @@ export const fromSpotify = (track: SpotifyTrack): Rec => ({
   track,
 });
 
-/** O Spotify vem primeiro; o catálogo FMA completa a fila. */
-export const spotifyFirst = (catalog: CatalogTrack[], spotify: SpotifyTrack[]): Rec[] => [
-  ...spotify.map(fromSpotify),
+/** O catálogo FMA (análise completa e áudio próprio) vem primeiro; o Spotify completa a fila. */
+export const catalogFirst = (catalog: CatalogTrack[], spotify: SpotifyTrack[]): Rec[] => [
   ...catalog.map(fromCatalog),
+  ...spotify.map(fromSpotify),
 ];
 
 export const recTitle = (rec: Rec) => rec.track.title || "Sem título";
