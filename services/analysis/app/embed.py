@@ -1,4 +1,4 @@
-"""Embedding CLAP (LAION, checkpoint treinado em música) de um trecho de áudio."""
+"""Embeddings de áudio: CLAP (LAION), EffNet (Essentia) e a combinação dos dois."""
 
 from functools import cache
 
@@ -43,3 +43,12 @@ def mean_normalized(frames: np.ndarray) -> list[float]:
     """Média das janelas de um embedding por janela (ex.: Discogs-EffNet), com norma 1."""
     v = np.asarray(frames).mean(axis=0)
     return (v / (np.linalg.norm(v) or 1.0)).astype(float).tolist()
+
+
+def combined(effnet: list[float], clap: list[float]) -> list[float]:
+    """Concatena os dois vetores (já com norma 1) e divide por √2: o resultado tem norma 1 e
+    o cosseno entre dois vetores combinados é a média dos cossenos do EffNet e do CLAP.
+    Na avaliação da F2 (FMA, 399 faixas) deu precisão@10 de 0,494, contra 0,449 e 0,460.
+    """
+    v = np.concatenate([effnet, clap]) / np.sqrt(2)
+    return v.astype(float).tolist()

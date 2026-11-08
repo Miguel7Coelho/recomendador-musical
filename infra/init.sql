@@ -1,7 +1,7 @@
 -- Esquema inicial do MVP (seção 6 da especificação).
 -- Roda só na primeira subida, quando o volume pgdata está vazio.
--- Os vetores ficam sem dimensão fixa enquanto a F2 compara modelos (EffNet 1280, CLAP 512);
--- depois da escolha, a dimensão é fixada e o índice HNSW é criado.
+-- vec sem dimensão fixa: guarda os vetores separados (EffNet 1280, CLAP 512) e o combinado
+-- (1792), que é o escolhido na F2 e tem o índice HNSW parcial.
 
 CREATE EXTENSION IF NOT EXISTS vector;
 
@@ -43,6 +43,9 @@ CREATE TABLE track_embeddings (
     vec      vector NOT NULL,
     PRIMARY KEY (track_id, model, stem)
 );
+CREATE INDEX track_embeddings_effnet_clap_hnsw
+    ON track_embeddings USING hnsw ((vec::vector(1792)) vector_cosine_ops)
+    WHERE model = 'effnet_clap';
 
 CREATE TABLE jobs (
     id           uuid PRIMARY KEY,

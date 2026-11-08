@@ -24,13 +24,25 @@ def test_genre_amplo_pela_soma() -> None:
 
 
 def test_voice_summary() -> None:
-    r = models.voice_summary({"instrumental": 0.1, "voice": 0.9}, {"female": 0.8, "male": 0.2})
+    r = models.voice_summary(
+        {"instrumental": 0.1, "voice": 0.9}, {"female": 0.8, "male": 0.2}, vocal_energy=0.4
+    )
     assert r == {"vocal_presence": 0.9, "vocal_gender": "female", "vocal_confidence": 0.8}
 
 
 def test_instrumental_sem_tipo_de_voz() -> None:
-    r = models.voice_summary({"instrumental": 0.58, "voice": 0.42}, {"female": 0.7, "male": 0.3})
+    r = models.voice_summary(
+        {"instrumental": 0.58, "voice": 0.42}, {"female": 0.7, "male": 0.3}, vocal_energy=0.4
+    )
     assert r == {"vocal_presence": 0.42, "vocal_gender": None, "vocal_confidence": None}
+
+
+def test_stem_de_voz_muda_e_instrumental() -> None:
+    # Caso real: stem de voz com 0,5% da energia da mixagem e classificador em 0,9 por vazamento.
+    r = models.voice_summary(
+        {"instrumental": 0.1, "voice": 0.9}, {"female": 0.7, "male": 0.3}, vocal_energy=0.005
+    )
+    assert r == {"vocal_presence": 0.0, "vocal_gender": None, "vocal_confidence": None}
 
 
 @pytest.fixture

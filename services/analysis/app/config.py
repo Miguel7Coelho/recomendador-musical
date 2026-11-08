@@ -8,4 +8,6 @@ S3_SECRET_KEY = os.getenv("S3_SECRET_KEY", "")
 S3_BUCKET = os.getenv("S3_BUCKET", "audio")
 
 ESSENTIA_MODELS_DIR = os.getenv("ESSENTIA_MODELS_DIR", "/models")
-CLAP_MODEL = os.getenv("CLAP_MODEL", "laion/larger_clap_music")
+# O larger_clap_music gerou vetores colapsados (cos médio 0,95 entre faixas, zero-shot no acaso)
+# com o transformers 4.57; o checkpoint geral funciona (ver avaliação da F2).
+CLAP_MODEL = os.getenv("CLAP_MODEL", "laion/clap-htsat-unfused")

@@ -9,6 +9,10 @@ from app.features import SR, detect_bpm, detect_key, hihat_density, subbass_ener
 STEMS = ("vocals", "drums", "bass", "other")
 
 
+def _rms(x: np.ndarray) -> float:
+    return float(np.sqrt(np.mean(np.square(x))))
+
+
 def _load(path: Path, sr: int) -> np.ndarray:
     return es.MonoLoader(filename=str(path), sampleRate=sr, resampleQuality=4)()
 
@@ -33,10 +37,10 @@ def analyze(mix_path: Path, stem_paths: dict[str, Path]) -> dict:
         **models.voice_summary(
             models.predict(models.VOICE, emb_vocals),
             models.predict(models.GENDER, emb_vocals),
+            vocal_energy=_rms(stems["vocals"]) / (_rms(mix) or 1.0),
         ),
     }
-    embeddings = {
-        "effnet": embed.mean_normalized(emb_mix),
-        "clap": embed.clap_embedding(_load(mix_path, embed.CLAP_SR)),
-    }
+    effnet = embed.mean_normalized(emb_mix)
+    clap = embed.clap_embedding(_load(mix_path, embed.CLAP_SR))
+    embeddings = {"effnet": effnet, "clap": clap, "effnet_clap": embed.combined(effnet, clap)}
     return {"features": features, "embeddings": embeddings}

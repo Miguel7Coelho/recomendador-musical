@@ -40,3 +40,9 @@ def test_sha256_estavel(make_tone, tmp_path: Path) -> None:
     normalize(src, b)
     assert sha256(a) == sha256(b)
     assert len(sha256(a)) == 64
+
+
+def test_normalize_rejeita_audio_curto(make_tone, tmp_path: Path) -> None:
+    # Como a faixa 098567 da FMA, que tem 0,55 s.
+    with pytest.raises(InvalidAudio, match="muito curto"):
+        normalize(make_tone(seconds=1), tmp_path / "out.wav")

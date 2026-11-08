@@ -36,4 +36,4 @@ def test_analisa_e_grava(monkeypatch) -> None:
     monkeypatch.setattr("app.pipeline.analyze", lambda mix, stems: RESULT)
     r = worker.analyze.apply(args=["abc"]).get()
     assert r["cached"] is False
-    assert saved == {"analysis/abc.json": RESULT}
+    assert saved == {"analysis/v2/abc.json": RESULT}

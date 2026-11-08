@@ -27,7 +27,7 @@ def test_analyze_formato_track_features(tmp_path, monkeypatch) -> None:
         models.GENDER: {"female": 0.5, "male": 0.5},
     }
     monkeypatch.setattr(models, "predict", lambda name, emb: fake[name])
-    monkeypatch.setattr(embed, "clap_embedding", lambda audio: [0.0] * 512)
+    monkeypatch.setattr(embed, "clap_embedding", lambda audio: [1.0] + [0.0] * 511)
 
     out = pipeline.analyze(tmp_path / "mix.wav", {k: tmp_path / f"{k}.wav" for k in paths})
     r = out["features"]
@@ -43,3 +43,6 @@ def test_analyze_formato_track_features(tmp_path, monkeypatch) -> None:
     assert r["subbass_energy"] > 0
     assert len(out["embeddings"]["clap"]) == 512
     assert len(out["embeddings"]["effnet"]) == 1280
+    assert len(out["embeddings"]["effnet_clap"]) == 1792
+    # A stem de voz do sinal de teste é silêncio: tem de sair como instrumental.
+    assert r["vocal_presence"] == 0.0 and r["vocal_gender"] is None

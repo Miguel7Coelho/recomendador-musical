@@ -32,8 +32,12 @@ def stem_keys(sha: str) -> dict[str, str]:
     return {stem: f"stems/{sha}/{stem}.wav" for stem in STEMS}
 
 
+# v2: CLAP geral + vetor combinado (os resultados da v1 tinham o CLAP colapsado).
+ANALYSIS_VERSION = "v2"
+
+
 def analysis_key(sha: str) -> str:
-    return f"analysis/{sha}.json"
+    return f"analysis/{ANALYSIS_VERSION}/{sha}.json"
 
 
 def exists(key: str) -> bool:

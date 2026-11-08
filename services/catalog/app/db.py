@@ -5,6 +5,7 @@ from contextlib import contextmanager
 import numpy as np
 import psycopg
 from pgvector.psycopg import register_vector
+from psycopg import sql
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
@@ -66,17 +67,24 @@ def insert_track(conn, track: dict, features: dict, embeddings: dict[str, list[f
 
 
 def similar(conn, model: str, vec: list[float], k: int, exclude_id: str | None) -> list[dict]:
-    """k vizinhos mais próximos por distância de cosseno (sem filtros: a cascata é da F3)."""
-    rows = conn.execute(
+    """k vizinhos mais próximos por distância de cosseno (sem filtros: a cascata é da F3).
+
+    A coluna vec não tem dimensão fixa; o cast para vector(N) é o que permite ao Postgres usar
+    o índice HNSW parcial do modelo (que é criado sobre vec::vector(N)).
+    """
+    dim = sql.SQL("vector({})").format(sql.Literal(len(vec)))
+    query = sql.SQL(
         """SELECT t.id, t.title, t.artist, t.dataset_genre, f.genre_top, f.camelot, f.bpm,
-                  1 - (e.vec <=> %(vec)s) AS cosine
+                  1 - (e.vec::{dim} <=> %(vec)s) AS cosine
            FROM track_embeddings e
            JOIN tracks t ON t.id = e.track_id
            LEFT JOIN track_features f ON f.track_id = t.id
            WHERE e.model = %(model)s AND e.stem = 'mix'
              AND (%(exclude)s::uuid IS NULL OR t.id <> %(exclude)s::uuid)
-           ORDER BY e.vec <=> %(vec)s
-           LIMIT %(k)s""",
-        {"vec": _vector(vec), "model": model, "k": k, "exclude": exclude_id},
+           ORDER BY e.vec::{dim} <=> %(vec)s
+           LIMIT %(k)s"""
+    ).format(dim=dim)
+    rows = conn.execute(
+        query, {"vec": _vector(vec), "model": model, "k": k, "exclude": exclude_id}
     ).fetchall()
     return [{**r, "id": str(r["id"])} for r in rows]

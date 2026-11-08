@@ -7,6 +7,7 @@ APAGA o schema public desse banco antes de recriar as tabelas com o infra/init.s
 import os
 from pathlib import Path
 
+import numpy as np
 import psycopg
 import pytest
 
@@ -71,3 +72,24 @@ def test_duplicata_e_atomicidade(conn) -> None:
         db.insert_track(conn, track("2", "Pop"), FEATURES, {"clap": []})
     conn.rollback()
     assert db.find_track(conn, "fma", "2") is None
+
+
+def test_busca_usa_indice_hnsw_do_modelo_combinado(conn) -> None:
+    rng = np.random.default_rng(0)
+    for i in range(30):
+        v = rng.normal(size=1792)
+        db.insert_track(
+            conn, track(str(i), "Pop"), FEATURES, {"effnet_clap": list(v / (v @ v) ** 0.5)}
+        )
+    conn.execute("ANALYZE track_embeddings")
+    # Tabela pequena: desliga as alternativas para o planejador mostrar se o índice serve à busca.
+    conn.execute("SET enable_seqscan = off")
+    conn.execute("SET enable_sort = off")
+    q = db._vector([1.0] + [0.0] * 1791)
+    plan = conn.execute(
+        """EXPLAIN SELECT track_id FROM track_embeddings
+           WHERE model = 'effnet_clap' ORDER BY vec::vector(1792) <=> %s LIMIT 5""",
+        (q,),
+    ).fetchall()
+    assert "track_embeddings_effnet_clap_hnsw" in str(plan)
+    assert len(db.similar(conn, "effnet_clap", [1.0] + [0.0] * 1791, k=5, exclude_id=None)) == 5

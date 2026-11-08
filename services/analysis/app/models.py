@@ -77,11 +77,18 @@ def genre_summary(probs: dict[str, float], k: int = 5) -> dict:
 
 
 VOICE_THRESHOLD = 0.5
+# Energia da stem de voz em relação à mixagem. Num beat instrumental medimos 0,005: o Demucs
+# deixa a stem quase muda e o classificador só vê vazamento. Faixas cantadas ficam bem acima.
+VOCAL_ENERGY_MIN = 0.05
 
 
-def voice_summary(voice: dict[str, float], gender: dict[str, float]) -> dict:
-    """Presença de voz e, só quando ela for alta, o tipo de voz (senão fica vazio)."""
-    presence = voice["voice"]
+def voice_summary(voice: dict[str, float], gender: dict[str, float], vocal_energy: float) -> dict:
+    """Presença de voz e, só quando ela for alta, o tipo de voz (senão fica vazio).
+
+    Se a stem de voz estiver praticamente muda, a faixa é tratada como instrumental (presença 0),
+    independente do que o classificador disser sobre o vazamento.
+    """
+    presence = 0.0 if vocal_energy < VOCAL_ENERGY_MIN else voice["voice"]
     if presence < VOICE_THRESHOLD:
         return {"vocal_presence": presence, "vocal_gender": None, "vocal_confidence": None}
     label, conf = max(gender.items(), key=lambda kv: kv[1])

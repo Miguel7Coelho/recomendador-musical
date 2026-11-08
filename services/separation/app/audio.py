@@ -2,7 +2,7 @@ import hashlib
 import subprocess
 from pathlib import Path
 
-from app.config import MAX_EXCERPT_SECONDS
+from app.config import MAX_EXCERPT_SECONDS, MIN_SECONDS
 
 
 class InvalidAudio(Exception):
@@ -22,6 +22,9 @@ def normalize(src: Path, dst: Path) -> None:
     # Cabeçalho WAV tem 44 bytes: abaixo disso não sobrou áudio nenhum.
     if result.returncode != 0 or not dst.exists() or dst.stat().st_size <= 44:
         raise InvalidAudio(result.stderr.strip() or "arquivo sem áudio")
+    seconds = (dst.stat().st_size - 44) / (44100 * 2 * 2)  # 44,1 kHz, 16 bits, estéreo
+    if seconds < MIN_SECONDS:
+        raise InvalidAudio(f"áudio muito curto ({seconds:.1f} s; mínimo {MIN_SECONDS} s)")
 
 
 def sha256(path: Path) -> str:
