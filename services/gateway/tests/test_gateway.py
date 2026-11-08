@@ -4,11 +4,12 @@ import uuid
 
 import httpx
 import pytest
+import redis
 from botocore.exceptions import ClientError
 from fastapi.testclient import TestClient
 
 import app.main as main
-from app import clients, youtube
+from app import clients, limits, youtube
 
 SHA = "a" * 64
 FMA_ID = str(uuid.uuid4())
@@ -110,6 +111,14 @@ class Services:
 
 
 class FakeStore:
+    def incr(self, key):
+        self.counts = getattr(self, "counts", {})
+        self.counts[key] = self.counts.get(key, 0) + 1
+        return self.counts[key]
+
+    def expire(self, key, seconds):
+        return True
+
     def __init__(self):
         self.data = {}
 
@@ -284,6 +293,51 @@ def test_youtube_sem_chave_configurada(setup, monkeypatch) -> None:
     monkeypatch.setattr(youtube, "YOUTUBE_API_KEY", "")
     c, svc = setup()
     assert _youtube(c).status_code == 503 and _youtube_calls(svc) == 0
+
+
+PROXY = {"X-Proxy-Secret": "chave", "X-Client-IP": "1.1.1.1"}
+SEARCH = {"q": "stro"}
+
+
+def test_sem_o_segredo_do_proxy_o_acesso_e_negado(setup, monkeypatch) -> None:
+    monkeypatch.setattr(main, "PROXY_SECRET", "chave")
+    c, _ = setup()
+    assert c.get("/songs/search", params=SEARCH).status_code == 403
+    assert c.get("/songs/search", params=SEARCH, headers=PROXY).status_code == 200
+    assert c.get("/health").status_code == 200
+
+
+def test_limite_vale_por_visitante(setup, monkeypatch) -> None:
+    monkeypatch.setattr(main, "PROXY_SECRET", "chave")
+    monkeypatch.setattr(limits, "GENERAL", ("api", 2, 60))
+    c, _ = setup()
+    for _ in range(2):
+        assert c.get("/songs/search", params=SEARCH, headers=PROXY).status_code == 200
+    r = c.get("/songs/search", params=SEARCH, headers=PROXY)
+    assert r.status_code == 429 and r.headers["retry-after"] == "60"
+    other = {**PROXY, "X-Client-IP": "2.2.2.2"}
+    assert c.get("/songs/search", params=SEARCH, headers=other).status_code == 200
+
+
+def test_sem_redis_o_site_continua(setup, monkeypatch) -> None:
+    def down():
+        raise redis.ConnectionError("fora")
+
+    c, _ = setup()
+    monkeypatch.setattr(clients, "store", down)
+    assert limits.retry_after("GET", "/songs/search", "1.1.1.1") is None
+
+
+def test_www_vai_para_o_endereco_principal(setup) -> None:
+    c, _ = setup()
+    r = c.get("/?a=1", headers={"host": "www.site.com"}, follow_redirects=False)
+    assert r.status_code == 301 and r.headers["location"].endswith("/?a=1")
+
+
+def test_arquivo_grande_demais(setup, monkeypatch) -> None:
+    monkeypatch.setattr(main, "MAX_UPLOAD_BYTES", 1)
+    c, _ = setup()
+    assert upload(c).status_code == 413
 
 
 def test_erro_da_separacao_e_repassado(setup) -> None:

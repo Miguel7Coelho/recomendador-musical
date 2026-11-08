@@ -1,5 +1,6 @@
 import logging
 import re
+import secrets
 from uuid import UUID
 
 import httpx
@@ -15,14 +16,16 @@ from fastapi import (
     Response,
     UploadFile,
 )
-from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 
-from app import clients, jobs, youtube
+from app import clients, jobs, limits, youtube
 from app.config import (
     CATALOG_URL,
     COOKIE_SECURE,
     EMBEDDING_MODEL,
     FRONTEND_URL,
+    PROXY_SECRET,
     S3_BUCKET,
     SEPARATION_URL,
     SPOTIFY_API_URL,
@@ -32,9 +35,28 @@ SERVICE = "gateway"
 SESSION_COOKIE = "session"
 SESSION_MAX_AGE_S = 30 * 24 * 3600
 BYTE_RANGE = re.compile(r"bytes=(\d+-\d*|-\d+)")
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
 received = logging.getLogger("uvicorn.error")  # o único logger que o uvicorn já exibe
 app = FastAPI(title=SERVICE)
+
+
+@app.middleware("http")
+async def guard(request: Request, call_next):
+    """Em produção só o proxy do site entra, e cada visitante tem seu limite de uso."""
+    if request.headers.get("host", "").startswith("www."):
+        query = f"?{request.url.query}" if request.url.query else ""
+        return RedirectResponse(f"{FRONTEND_URL}{request.url.path}{query}", 301)
+    if not PROXY_SECRET or request.url.path == "/health":
+        return await call_next(request)
+    if not secrets.compare_digest(request.headers.get("x-proxy-secret", ""), PROXY_SECRET):
+        return JSONResponse({"detail": "Acesso negado"}, 403)
+    client = request.headers.get("x-client-ip", "")
+    wait = await run_in_threadpool(limits.retry_after, request.method, request.url.path, client)
+    if wait is not None:
+        detail = "Muitos pedidos em pouco tempo. Tente de novo mais tarde."
+        return JSONResponse({"detail": detail}, 429, headers={"Retry-After": str(wait)})
+    return await call_next(request)
 
 
 def _ok(r: httpx.Response) -> dict:
@@ -64,6 +86,8 @@ def health() -> dict[str, str]:
 def analyze(
     file: UploadFile, title: str | None = Form(None), artist: str | None = Form(None)
 ) -> dict:
+    if (file.size or 0) > MAX_UPLOAD_BYTES:
+        raise HTTPException(413, "O arquivo passa de 25 MB. Envie um trecho menor.")
     files = {"file": (file.filename or "audio", file.file, file.content_type)}
     separation = _ok(clients.http().post(f"{SEPARATION_URL}/separate", files=files))
     track = {"title": title, "artist": artist} if title and artist else None

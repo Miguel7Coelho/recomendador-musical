@@ -15,4 +15,5 @@ S3_BUCKET = os.getenv("S3_BUCKET", "audio")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://127.0.0.1:5173")
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"  # true em produção (HTTPS)
 EMBEDDING_MODEL = "effnet_clap"
+PROXY_SECRET = os.getenv("PROXY_SECRET", "")  # vazio em desenvolvimento: sem proxy e sem limites
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
