@@ -4,6 +4,7 @@ import { useRef, useState, type CSSProperties } from "react";
 import { api, gatewayUrl } from "../api/client";
 import type { Rec } from "../lib/recs";
 import { recTitle } from "../lib/recs";
+import { RoundButton } from "./ui";
 
 const formatTime = (seconds: number) => {
   if (!Number.isFinite(seconds)) return "–:––";
@@ -37,7 +38,7 @@ function AudioPlayer({ src, title, autoplay, onEnded }: AudioPlayerProps) {
 
   const max = Number.isFinite(duration) ? duration : 0;
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-4">
       <audio
         ref={audio}
         src={src}
@@ -50,15 +51,16 @@ function AudioPlayer({ src, title, autoplay, onEnded }: AudioPlayerProps) {
         onEnded={onEnded}
         onError={() => setFailed(true)}
       />
-      <button
-        type="button"
-        aria-label={`${playing ? "Pausar" : "Tocar"} ${title}`}
+      <RoundButton
+        label={`${playing ? "Pausar" : "Tocar"} ${title}`}
+        aria-pressed={playing}
+        halo={!playing}
+        className="!text-accent"
         onClick={() => (playing ? audio.current?.pause() : void audio.current?.play())}
-        className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-sm bg-accent text-on-accent transition-colors duration-100 hover:bg-text"
       >
         <PlayIcon playing={playing} />
-      </button>
-      <span className="font-mono text-small text-muted tabular-nums">{formatTime(current)}</span>
+      </RoundButton>
+      <span className="text-small text-muted tabular-nums">{formatTime(current)}</span>
       <input
         type="range"
         aria-label="Posição na faixa"
@@ -74,7 +76,7 @@ function AudioPlayer({ src, title, autoplay, onEnded }: AudioPlayerProps) {
           if (audio.current) audio.current.currentTime = time;
         }}
       />
-      <span className="font-mono text-small text-muted tabular-nums">{formatTime(duration)}</span>
+      <span className="text-small text-muted tabular-nums">{formatTime(duration)}</span>
       <input
         type="range"
         aria-label="Volume"
@@ -102,20 +104,20 @@ function YouTubePlayer({ title, artist }: { title: string; artist: string }) {
     staleTime: Infinity,
     refetchOnWindowFocus: false,
   });
-  if (video.isPending) return <p className="bg-raised p-3 text-small text-muted">Procurando o vídeo…</p>;
+  if (video.isPending) return <p className="well p-5 text-small text-muted">Procurando o vídeo…</p>;
   if (video.data?.video_id) {
     return (
       <iframe
         title={`Ouvir ${title} no YouTube`}
         src={`https://www.youtube-nocookie.com/embed/${video.data.video_id}`}
-        className="block aspect-video w-full rounded-sm border-0"
+        className="block aspect-video w-full rounded-2xl border-0"
         allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
       />
     );
   }
   const search = new URLSearchParams({ search_query: `${artist} ${title}` });
   return (
-    <p className="bg-raised p-3 text-small text-muted">
+    <p className="well p-5 text-small text-muted">
       Vídeo indisponível aqui.{" "}
       <a className="text-accent underline" href={`https://www.youtube.com/results?${search}`} target="_blank" rel="noreferrer">
         Procurar no YouTube
@@ -132,14 +134,13 @@ export function Player({ rec, autoplay, onEnded }: PlayerProps) {
   }
   if (rec.kind === "spotify") {
     return (
-      <div className="overflow-hidden rounded-sm">
+      <div className="overflow-hidden rounded-2xl">
         <iframe
           key={rec.key}
           title={`Ouvir ${recTitle(rec)} no Spotify`}
           src={`https://open.spotify.com/embed/track/${rec.track.spotify_id}?theme=0`}
           height={152}
           className="block w-full border-0"
-          style={{ colorScheme: "light" }} // com a página em modo escuro, o iframe pintaria cantos brancos
           allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
           loading="lazy"
         />
@@ -147,7 +148,7 @@ export function Player({ rec, autoplay, onEnded }: PlayerProps) {
     );
   }
   return (
-    <div className="bg-raised p-3">
+    <div className="well p-5">
       {rec.track.audio_url ? (
         <AudioPlayer
           key={rec.key}

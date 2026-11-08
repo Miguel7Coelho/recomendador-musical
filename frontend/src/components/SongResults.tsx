@@ -10,7 +10,7 @@ import { Chip, Label, Readout } from "./ui";
 
 function SongSource({ song }: { song: SongProfile }) {
   return (
-    <aside className="border-line lg:border-r lg:pr-8">
+    <aside className="panel flip-in self-start p-6">
       <Label>Sua música</Label>
       <p className="mt-4 text-title font-semibold break-words">{song.title}</p>
       <p className="text-muted">{song.artist}</p>
@@ -45,9 +45,9 @@ export function SongResults({ song, onReset }: { song: Song; onReset: () => void
 
   if (search.isPending) {
     return (
-      <section className="mx-auto max-w-xl pt-12">
-        <h2 className="text-title font-semibold">Procurando faixas parecidas</h2>
-        <p className="mt-2 text-muted">
+      <section className="mx-auto max-w-xl pt-12 text-center">
+        <h2 className="text-headline font-semibold tracking-tight">Procurando faixas parecidas</h2>
+        <p className="mt-3 text-muted">
           {song.title} · {song.artist}
         </p>
       </section>

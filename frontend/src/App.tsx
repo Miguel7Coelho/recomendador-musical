@@ -56,7 +56,7 @@ function Account() {
 
   if (!me.data) {
     return (
-      <a href={loginUrl} className="inline-flex min-h-11 items-center rounded-sm border border-control px-4 hover:bg-raised">
+      <a href={loginUrl} className="btn">
         Entrar com Spotify
       </a>
     );
@@ -97,13 +97,13 @@ export function App() {
   }
 
   return (
-    <div className="mx-auto max-w-[1120px] px-4 pb-16">
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line py-2.5">
-        <h1 className="font-mono text-small font-medium">
+    <div className="mx-auto max-w-[1120px] px-4 pb-20 sm:px-6">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-4">
+        <h1 className="text-body font-semibold">
           <button
             type="button"
             onClick={reset}
-            className="min-h-11 cursor-pointer rounded-sm transition-colors duration-100 hover:text-accent"
+            className="min-h-11 cursor-pointer rounded-full transition-colors duration-200 hover:text-accent"
           >
             Recomendador musical
           </button>
@@ -121,7 +121,7 @@ export function App() {
           </Notice>
         </div>
       )}
-      <main className="pt-8">
+      <main className="pt-6">
         {jobId ? (
           <Screen key={jobId} jobId={jobId} onReset={reset} />
         ) : song ? (

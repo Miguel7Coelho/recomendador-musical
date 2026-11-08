@@ -7,7 +7,7 @@ export const DEFAULT_FILTERS: Filters = { key: "exact", genre: "style", voice: "
 
 type Lockable = "key" | "genre" | "voice";
 
-const inputClass = "mt-1 min-h-11 w-full rounded-sm border border-control bg-raised px-3 tabular-nums";
+const inputClass = "field tabular-nums";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (

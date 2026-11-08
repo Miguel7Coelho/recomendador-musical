@@ -19,7 +19,7 @@ export function Drawer({ open, onClose, title, children }: DrawerProps) {
       ref={ref}
       onClose={onClose}
       aria-label={title}
-      className="m-0 ml-auto h-dvh max-h-none w-full max-w-md overflow-y-auto border-l border-line bg-surface p-6 text-text backdrop:bg-bg/80"
+      className="m-0 ml-auto h-dvh max-h-none w-full max-w-md overflow-y-auto bg-surface p-6 text-text shadow-[-14px_0_32px_var(--color-shade)] backdrop:bg-text/30"
     >
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-title font-semibold">{title}</h2>

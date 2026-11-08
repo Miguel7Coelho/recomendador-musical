@@ -9,7 +9,15 @@ import { useSession } from "../store";
 import { Drawer } from "./Drawer";
 import { DEFAULT_FILTERS, FilterForm } from "./FilterForm";
 import { Player } from "./Player";
-import { Button, Chip, Label, Notice, Readout } from "./ui";
+import { Button, Chip, Icon, Label, Notice, Readout, RoundButton } from "./ui";
+
+const ICONS = {
+  favorite: "M12 20s-7-4.4-9-9a4.8 4.8 0 0 1 9-3 4.8 4.8 0 0 1 9 3c-2 4.6-9 9-9 9z",
+  previous: "M7 6v12M19 6l-9 6 9 6z",
+  next: "M17 6v12M5 6l9 6-9 6z",
+  shuffle: "M3 7h4l10 10h4M3 17h4l3-3M14 10l3-3h4M18 4l3 3-3 3M18 14l3 3-3 3",
+  autoplay: "M4 11V9a3 3 0 0 1 3-3h13M17 3l3 3-3 3M20 13v2a3 3 0 0 1-3 3H4M7 21l-3-3 3-3",
+};
 
 type Similar = { seed: string; items: Rec[] };
 
@@ -162,11 +170,11 @@ export function Results({ jobId, features, source, result }: ResultsProps) {
         {noMatches && <Notice>Não encontramos faixas parecidas com esta.</Notice>}
 
         {rec ? (
-          <article className="space-y-6 bg-surface p-6">
+          <article key={rec.key} className="panel flip-in space-y-7 p-6 sm:p-8">
             <header>
               <Label>{{ catalog: "Catálogo FMA", spotify: "Spotify", backup: "YouTube" }[rec.kind]}</Label>
-              <h2 className="mt-2 text-headline font-semibold break-words">{recTitle(rec)}</h2>
-              <p className="mt-1 text-body">{recArtist(rec)}</p>
+              <h2 className="mt-2 text-headline font-semibold tracking-tight break-words">{recTitle(rec)}</h2>
+              <p className="mt-1 text-lead text-muted">{recArtist(rec)}</p>
             </header>
 
             <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
@@ -184,27 +192,34 @@ export function Results({ jobId, features, source, result }: ResultsProps) {
 
             <Player rec={rec} autoplay={autoplay} onEnded={() => autoplay && next()} />
 
-            <div className="flex flex-wrap gap-2">
-              <Button variant="primary" onClick={next} disabled={items.length < 2} aria-keyshortcuts="n">
-                Próxima
-              </Button>
-              <Button onClick={previous} disabled={items.length < 2} aria-keyshortcuts="p">
-                Anterior
-              </Button>
-              <Button onClick={shuffle} disabled={items.length < 2} aria-keyshortcuts="a">
-                Aleatória
-              </Button>
-              <Button aria-pressed={favorite} onClick={() => toggleFavorite(rec)} aria-keyshortcuts="f">
-                {favorite ? "Favoritada" : "Favoritar"}
-              </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-5">
+              <RoundButton
+                label={favorite ? "Favoritada" : "Favoritar"}
+                aria-pressed={favorite}
+                aria-keyshortcuts="f"
+                onClick={() => toggleFavorite(rec)}
+              >
+                <Icon path={ICONS.favorite} />
+              </RoundButton>
+              <RoundButton label="Anterior" aria-keyshortcuts="p" onClick={previous} disabled={items.length < 2}>
+                <Icon path={ICONS.previous} />
+              </RoundButton>
+              <RoundButton label="Próxima" large aria-keyshortcuts="n" onClick={next} disabled={items.length < 2}>
+                <Icon path={ICONS.next} size={28} />
+              </RoundButton>
+              <RoundButton label="Aleatória" aria-keyshortcuts="a" onClick={shuffle} disabled={items.length < 2}>
+                <Icon path={ICONS.shuffle} />
+              </RoundButton>
+              <RoundButton label="Avanço automático" aria-pressed={autoplay} onClick={toggleAutoplay}>
+                <Icon path={ICONS.autoplay} />
+              </RoundButton>
+            </div>
+            <div className="text-center">
               <Button onClick={() => more.mutate(rec)} disabled={more.isPending}>
                 {more.isPending ? "Buscando…" : "Mais parecidas com esta"}
               </Button>
-              <Button aria-pressed={autoplay} onClick={toggleAutoplay}>
-                Avanço automático
-              </Button>
             </div>
-            <p className="font-mono text-label text-muted">Atalhos: N próxima · P anterior · A aleatória · F favoritar</p>
+            <p className="text-center text-label text-muted">Atalhos: N próxima · P anterior · A aleatória · F favoritar</p>
           </article>
         ) : (
           <Notice>Nenhuma recomendação encontrada para esta faixa.</Notice>

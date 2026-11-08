@@ -37,7 +37,7 @@ export function SongField({ initialQuery, value, onChange, onSearch }: SongField
     return (
       <div>
         <Label>Música</Label>
-        <div className="mt-1 flex items-center justify-between gap-4 rounded-sm bg-raised px-3 py-2">
+        <div className="well mt-2 flex items-center justify-between gap-4 px-5 py-3">
           <div className="min-w-0">
             <p className="font-medium break-words">{value.title}</p>
             <p className="text-small text-muted">{value.artist}</p>
@@ -52,7 +52,7 @@ export function SongField({ initialQuery, value, onChange, onSearch }: SongField
               type="button"
               aria-label="Limpar música"
               onClick={() => onChange(null)}
-              className="flex size-8 cursor-pointer items-center justify-center rounded-sm text-muted transition-colors duration-100 hover:bg-surface hover:text-text"
+              className="flex size-8 cursor-pointer items-center justify-center rounded-full text-muted transition-colors duration-200 hover:text-accent"
             >
               <svg viewBox="0 0 16 16" className="size-3 stroke-current" strokeWidth={2} aria-hidden>
                 <path d="M2 2l12 12M14 2L2 14" />
@@ -74,20 +74,20 @@ export function SongField({ initialQuery, value, onChange, onSearch }: SongField
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Artista e nome da música"
           autoComplete="off"
-          className="mt-1 min-h-11 w-full rounded-sm border border-control bg-raised px-3"
+          className="field"
         />
       </label>
-      <p className="mt-1 text-small text-muted">
+      <p className="mt-2 text-small text-muted">
         Encontramos faixas parecidas pelo que os ouvintes dela também escutam.
       </p>
       {results.length > 0 && (
-        <ul className="mt-2 divide-y divide-line border-y border-line" aria-label="Sugestões">
+        <ul className="well mt-3 p-2" aria-label="Sugestões">
           {results.map((song) => (
             <li key={`${song.title}|${song.artist}`}>
               <button
                 type="button"
                 onClick={() => onChange(song)}
-                className="block min-h-11 w-full cursor-pointer px-3 py-2 text-left transition-colors duration-100 hover:bg-raised"
+                className="block min-h-11 w-full cursor-pointer rounded-2xl px-3 py-2 text-left transition-colors duration-200 hover:text-accent"
               >
                 <span className="block break-words">{song.title}</span>
                 <span className="block text-small text-muted">{song.artist}</span>

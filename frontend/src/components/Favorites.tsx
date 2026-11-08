@@ -53,13 +53,13 @@ export function Favorites() {
 
   return (
     <div className="space-y-6">
-      <ul className="divide-y divide-line border-y border-line">
+      <ul className="space-y-3">
         {recs.map((rec) => (
-          <li key={rec.key} className="flex items-center justify-between gap-4 py-3">
+          <li key={rec.key} className="well flex items-center justify-between gap-4 px-5 py-3">
             <div className="min-w-0">
               <p className="font-medium break-words">{recTitle(rec)}</p>
               <p className="text-small text-muted">{recArtist(rec)}</p>
-              {missing.has(rec.key) && <p className="text-small text-info">Não está no Spotify</p>}
+              {missing.has(rec.key) && <p className="text-small text-accent">Não está no Spotify</p>}
             </div>
             <Button aria-label={`Remover ${recTitle(rec)}`} onClick={() => toggleFavorite(rec)}>
               Remover
@@ -82,7 +82,7 @@ export function Favorites() {
             maxLength={100}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 min-h-11 w-full rounded-sm border border-control bg-raised px-3"
+            className="field"
           />
         </label>
         <Button type="submit" variant="primary" disabled={save.isPending || tooMany || !name.trim()}>

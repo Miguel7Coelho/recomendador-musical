@@ -15,7 +15,7 @@ function voiceLabel(f: Features): { text: string; value?: string } {
 export function SourceTrack({ features: f }: { features: Features }) {
   const voice = voiceLabel(f);
   return (
-    <aside className="border-line lg:border-r lg:pr-8">
+    <aside className="panel flip-in self-start p-6">
       <Label>Sua faixa</Label>
       <div className="mt-4 grid grid-cols-2 gap-6 lg:grid-cols-1">
         <Readout label="Tom" value={f.camelot} detail={formatKey(f.key, f.scale)} confidence={f.key_strength} />
