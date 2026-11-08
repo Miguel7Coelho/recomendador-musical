@@ -41,3 +41,30 @@ O visual segue `frontend/DESIGN.md`.
 cd services/gateway
 uv run pytest
 ```
+
+## Publicação
+
+O frontend fica no Cloudflare Pages e o backend na máquina local, exposto por um Cloudflare Tunnel.
+A função `frontend/functions/api/[[path]].js` repassa `/api/*` ao gateway, então site e API ficam na
+mesma origem e nenhuma porta precisa ser aberta.
+
+```bash
+# Backend: mantenha rodando enquanto o site estiver no ar
+docker compose up -d
+cloudflared tunnel --url http://127.0.0.1:8000
+
+# Frontend
+cd frontend && npm run build
+npx wrangler pages deploy dist --project-name recomendador-musical
+npx wrangler pages secret put BACKEND_URL --project-name recomendador-musical
+```
+
+Com o endereço do site definido, ajuste o `.env` e recrie os serviços com `docker compose up -d`:
+
+```bash
+FRONTEND_URL=https://SEU-SITE
+COOKIE_SECURE=true
+SPOTIFY_REDIRECT_URI=https://SEU-SITE/api/auth/callback
+```
+
+Cadastre o mesmo `SPOTIFY_REDIRECT_URI` no painel do app do Spotify.
