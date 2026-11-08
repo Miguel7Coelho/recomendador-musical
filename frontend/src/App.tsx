@@ -96,7 +96,15 @@ export function App() {
   return (
     <div className="mx-auto max-w-[1120px] px-4 pb-16">
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line py-2.5">
-        <h1 className="font-mono text-small font-medium">Recomendador musical</h1>
+        <h1 className="font-mono text-small font-medium">
+          <button
+            type="button"
+            onClick={() => setJob(null)}
+            className="min-h-11 cursor-pointer rounded-sm transition-colors duration-100 hover:text-accent"
+          >
+            Recomendador musical
+          </button>
+        </h1>
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={() => setShowFavorites(true)}>Favoritas · {Object.keys(favorites).length}</Button>
           <Account />
