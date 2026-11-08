@@ -4,6 +4,7 @@ import uuid
 
 import httpx
 import pytest
+from botocore.exceptions import ClientError
 from fastapi.testclient import TestClient
 
 import app.main as main
@@ -238,6 +239,39 @@ def test_audio_so_da_fma(setup, monkeypatch) -> None:
     assert r.status_code == 200 and r.content == b"RIFFwav"
     assert r.headers["content-type"] == "audio/wav"
     assert c.get(f"/audio/track/{UPLOAD_ID}").status_code == 404
+
+
+def test_audio_aceita_range_para_pular_na_faixa(setup, monkeypatch) -> None:
+    c, _ = setup()
+    seen = {}
+
+    class Body(io.BytesIO):
+        def iter_chunks(self):
+            yield self.getvalue()
+
+    def get_object(**kw):
+        seen.clear()
+        seen.update(kw)
+        if kw.get("Range") == "bytes=99-":
+            error = {"Error": {"Code": "InvalidRange"}}
+            raise ClientError(error, "GetObject")
+        if "Range" in kw:
+            return {"Body": Body(b"FFw"), "ContentLength": 3, "ContentRange": "bytes 2-4/7"}
+        return {"Body": Body(b"RIFFwav"), "ContentLength": 7}
+
+    monkeypatch.setattr(
+        clients, "s3", lambda: type("S3", (), {"get_object": staticmethod(get_object)})()
+    )
+    url = f"/audio/track/{FMA_ID}"
+
+    r = c.get(url, headers={"Range": "bytes=2-4"})
+    assert r.status_code == 206 and r.content == b"FFw"
+    assert r.headers["content-range"] == "bytes 2-4/7" and r.headers["accept-ranges"] == "bytes"
+
+    assert c.get(url, headers={"Range": "bytes=99-"}).status_code == 416
+
+    r = c.get(url, headers={"Range": "bytes=0-1,3-4"})  # vários intervalos: arquivo inteiro
+    assert r.status_code == 200 and "Range" not in seen and r.headers["accept-ranges"] == "bytes"
 
 
 def test_login_e_sessao(setup) -> None:

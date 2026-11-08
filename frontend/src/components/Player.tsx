@@ -1,37 +1,127 @@
+import { useRef, useState, type CSSProperties } from "react";
+
 import { gatewayUrl } from "../api/client";
 import type { Rec } from "../lib/recs";
 import { recTitle } from "../lib/recs";
+
+const formatTime = (seconds: number) => {
+  if (!Number.isFinite(seconds)) return "–:––";
+  const s = Math.floor(seconds);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+};
+
+function PlayIcon({ playing }: { playing: boolean }) {
+  return (
+    <svg viewBox="0 0 16 16" className="size-4 fill-current" aria-hidden>
+      {playing ? <path d="M3 2h4v12H3zM9 2h4v12H9z" /> : <path d="M4 2l10 6-10 6z" />}
+    </svg>
+  );
+}
+
+function fill(value: number, max: number): CSSProperties {
+  return { "--fill": `${max > 0 ? (value / max) * 100 : 0}%` } as CSSProperties;
+}
+
+type AudioPlayerProps = { src: string; title: string; autoplay: boolean; onEnded: () => void };
+
+function AudioPlayer({ src, title, autoplay, onEnded }: AudioPlayerProps) {
+  const audio = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [current, setCurrent] = useState(0);
+  const [duration, setDuration] = useState(Number.NaN);
+  const [volume, setVolume] = useState(1);
+  const [failed, setFailed] = useState(false);
+
+  if (failed) return <p className="text-small text-danger">Não foi possível tocar este trecho.</p>;
+
+  const max = Number.isFinite(duration) ? duration : 0;
+  return (
+    <div className="flex items-center gap-3">
+      <audio
+        ref={audio}
+        src={src}
+        preload="auto"
+        autoPlay={autoplay}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onTimeUpdate={(e) => setCurrent(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onEnded={onEnded}
+        onError={() => setFailed(true)}
+      />
+      <button
+        type="button"
+        aria-label={`${playing ? "Pausar" : "Tocar"} ${title}`}
+        onClick={() => (playing ? audio.current?.pause() : void audio.current?.play())}
+        className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-sm bg-accent text-on-accent transition-colors duration-100 hover:bg-text"
+      >
+        <PlayIcon playing={playing} />
+      </button>
+      <span className="font-mono text-small text-muted tabular-nums">{formatTime(current)}</span>
+      <input
+        type="range"
+        aria-label="Posição na faixa"
+        className="range min-w-0 flex-1"
+        min={0}
+        max={max}
+        step={0.1}
+        value={Math.min(current, max)}
+        style={fill(current, max)}
+        onChange={(e) => {
+          const time = Number(e.target.value);
+          setCurrent(time);
+          if (audio.current) audio.current.currentTime = time;
+        }}
+      />
+      <span className="font-mono text-small text-muted tabular-nums">{formatTime(duration)}</span>
+      <input
+        type="range"
+        aria-label="Volume"
+        className="range hidden w-20 sm:block"
+        min={0}
+        max={1}
+        step={0.05}
+        value={volume}
+        style={fill(volume, 1)}
+        onChange={(e) => {
+          const level = Number(e.target.value);
+          setVolume(level);
+          if (audio.current) audio.current.volume = level;
+        }}
+      />
+    </div>
+  );
+}
 
 type PlayerProps = { rec: Rec; autoplay: boolean; onEnded: () => void };
 
 export function Player({ rec, autoplay, onEnded }: PlayerProps) {
   if (rec.kind === "spotify") {
     return (
-      <iframe
-        key={rec.key}
-        title={`Ouvir ${recTitle(rec)} no Spotify`}
-        src={`https://open.spotify.com/embed/track/${rec.track.spotify_id}`}
-        height={152}
-        className="w-full border-0"
-        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-        loading="lazy"
-      />
+      <div className="overflow-hidden rounded-sm">
+        <iframe
+          key={rec.key}
+          title={`Ouvir ${recTitle(rec)} no Spotify`}
+          src={`https://open.spotify.com/embed/track/${rec.track.spotify_id}?theme=0`}
+          height={152}
+          className="block w-full border-0"
+          style={{ colorScheme: "light" }} // com a página em modo escuro, o iframe pintaria cantos brancos
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          loading="lazy"
+        />
+      </div>
     );
   }
   return (
-    <div>
+    <div className="bg-raised p-3">
       {rec.track.audio_url ? (
-        <audio
+        <AudioPlayer
           key={rec.key}
-          className="w-full"
-          controls
-          preload="none"
-          autoPlay={autoplay}
           src={gatewayUrl(rec.track.audio_url)}
+          title={recTitle(rec)}
+          autoplay={autoplay}
           onEnded={onEnded}
-        >
-          Seu navegador não toca este áudio.
-        </audio>
+        />
       ) : (
         <p className="text-small text-muted">Esta faixa não tem trecho para tocar.</p>
       )}

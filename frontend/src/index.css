@@ -27,11 +27,58 @@
   --text-body--line-height: 24px;
   --text-title: 22px;
   --text-title--line-height: 28px;
+  --text-headline: 32px;
+  --text-headline--line-height: 36px;
   --text-readout: 40px;
   --text-readout--line-height: 44px;
 
   --radius-sm: 2px;
   --tracking-label: 0.08em;
+}
+
+@layer components {
+  .range {
+    appearance: none;
+    height: 24px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .range::-webkit-slider-runnable-track {
+    height: 4px;
+    background: linear-gradient(
+      to right,
+      var(--color-accent) var(--fill, 0%),
+      var(--color-control) var(--fill, 0%)
+    );
+  }
+
+  .range::-moz-range-track {
+    height: 4px;
+    background: var(--color-control);
+  }
+
+  .range::-moz-range-progress {
+    height: 4px;
+    background: var(--color-accent);
+  }
+
+  .range::-webkit-slider-thumb {
+    appearance: none;
+    width: 8px;
+    height: 16px;
+    margin-top: -6px;
+    border-radius: var(--radius-sm);
+    background: var(--color-text);
+  }
+
+  .range::-moz-range-thumb {
+    width: 8px;
+    height: 16px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: var(--color-text);
+  }
 }
 
 @layer base {

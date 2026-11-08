@@ -61,6 +61,7 @@ Cor nunca é o único sinal: estados também têm texto ou ícone.
 | `small` | 13/20 | crédito, explicação |
 | `body` | 15/24 | texto corrente, controles |
 | `title` | 22/28, 600 | nome da faixa |
+| `headline` | 32/36, 600 | nome da faixa recomendada |
 | `readout` | 40/44, mono, 500 | tom e BPM em destaque |
 
 Números sempre com `tabular-nums`. Decimais em vírgula (pt-BR).
@@ -84,9 +85,9 @@ Números sempre com `tabular-nums`. Decimais em vírgula (pt-BR).
 | `Readout` | rótulo + valor grande + barra fina de confiança |
 | `Chip` | atributo com probabilidade (estilo, gênero, voz) |
 | `Stage` | etapas separando → analisando → buscando, com a atual em `accent` |
-| `Player` | `<audio>` da FMA com crédito visível, ou iframe do Spotify |
+| `Player` | controles próprios sobre `<audio>` para a FMA, com crédito visível, ou iframe escuro do Spotify |
 | `ActionBar` | pular, aleatório, favoritar, mais parecidas; atalhos de teclado |
-| `Notice` | variantes `info` (relaxado, Spotify fora) e `danger` (falha, reenviar) |
+| `Notice` | variantes `info` (relaxado, Spotify fora) e `danger` (falha, reenviar); o retorno do login some em 40 s e tem botão de fechar |
 | `FilterDrawer` | tom, gênero, voz, BPM, ano; travar envia `filters.locked`; indica que vale só para o catálogo |
 | `Button` | `primary` (âmbar), `ghost` (borda `control`) |
 

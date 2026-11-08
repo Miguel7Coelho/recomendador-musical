@@ -1,7 +1,9 @@
+import re
 from uuid import UUID
 
 import httpx
-from fastapi import Body, Cookie, FastAPI, HTTPException, Request, Response, UploadFile
+from botocore.exceptions import ClientError
+from fastapi import Body, Cookie, FastAPI, Header, HTTPException, Request, Response, UploadFile
 from fastapi.responses import RedirectResponse, StreamingResponse
 
 from app import clients, jobs
@@ -18,6 +20,7 @@ from app.config import (
 SERVICE = "gateway"
 SESSION_COOKIE = "session"
 SESSION_MAX_AGE_S = 30 * 24 * 3600
+BYTE_RANGE = re.compile(r"bytes=(\d+-\d*|-\d+)")
 
 app = FastAPI(title=SERVICE)
 
@@ -107,14 +110,34 @@ async def more_like_spotify_track(spotify_id: str, request: Request) -> dict:
 
 
 @app.get("/audio/track/{track_id}")
-def audio(track_id: UUID) -> StreamingResponse:
+def audio(
+    track_id: UUID, byte_range: str | None = Header(None, alias="Range")
+) -> StreamingResponse:
     track = _ok(clients.http().get(f"{CATALOG_URL}/tracks/{track_id}"))
     # Só trechos da FMA: o áudio que um usuário envia nunca é servido a terceiros.
     if track["source"] != "fma" or not track.get("audio_sha"):
         raise HTTPException(404, "Esta faixa não tem trecho próprio para tocar")
-    obj = clients.s3().get_object(Bucket=S3_BUCKET, Key=f"inputs/{track['audio_sha']}.wav")
-    headers = {"Content-Length": str(obj["ContentLength"]), "Cache-Control": "max-age=86400"}
-    return StreamingResponse(obj["Body"].iter_chunks(), media_type="audio/wav", headers=headers)
+    # Sem Range o navegador não consegue pular para outro ponto da faixa.
+    extra = {"Range": byte_range} if byte_range and BYTE_RANGE.fullmatch(byte_range) else {}
+    key = f"inputs/{track['audio_sha']}.wav"
+    try:
+        obj = clients.s3().get_object(Bucket=S3_BUCKET, Key=key, **extra)
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "InvalidRange":
+            raise HTTPException(416, "Intervalo de áudio inválido") from e
+        raise
+    headers = {
+        "Accept-Ranges": "bytes",
+        "Content-Length": str(obj["ContentLength"]),
+        "Cache-Control": "max-age=86400",
+    }
+    status = 200
+    if obj.get("ContentRange"):
+        headers["Content-Range"] = obj["ContentRange"]
+        status = 206
+    return StreamingResponse(
+        obj["Body"].iter_chunks(), status_code=status, media_type="audio/wav", headers=headers
+    )
 
 
 # --- Spotify: login, perfil, correspondência e playlist --------------------------------------

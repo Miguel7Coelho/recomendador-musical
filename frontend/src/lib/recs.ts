@@ -16,17 +16,11 @@ export const fromSpotify = (track: SpotifyTrack): Rec => ({
   track,
 });
 
-/** Alterna as duas fontes, começando pelo catálogo (análise completa e áudio próprio). */
-export function interleave(catalog: CatalogTrack[], spotify: SpotifyTrack[]): Rec[] {
-  const out: Rec[] = [];
-  for (let i = 0; i < Math.max(catalog.length, spotify.length); i++) {
-    const c = catalog[i];
-    const s = spotify[i];
-    if (c) out.push(fromCatalog(c));
-    if (s) out.push(fromSpotify(s));
-  }
-  return out;
-}
+/** O Spotify vem primeiro; o catálogo FMA completa a fila. */
+export const spotifyFirst = (catalog: CatalogTrack[], spotify: SpotifyTrack[]): Rec[] => [
+  ...spotify.map(fromSpotify),
+  ...catalog.map(fromCatalog),
+];
 
 export const recTitle = (rec: Rec) => rec.track.title || "Sem título";
 

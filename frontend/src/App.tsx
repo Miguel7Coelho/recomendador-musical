@@ -12,6 +12,7 @@ import { Button, Notice } from "./components/ui";
 import { useSession } from "./store";
 
 const POLL_MS = 1500;
+const LOGIN_NOTICE_MS = 40_000;
 
 function Screen({ jobId, onReset }: { jobId: string; onReset: () => void }) {
   const job = useQuery({
@@ -77,11 +78,14 @@ export function App() {
   const { jobId, setJob, favorites } = useSession();
   const queryClient = useQueryClient();
   const [showFavorites, setShowFavorites] = useState(false);
-  const [login] = useState(() => new URLSearchParams(window.location.search).get("login"));
+  const [login, setLogin] = useState(() => new URLSearchParams(window.location.search).get("login"));
   const loginMessage = login ? LOGIN_MESSAGES[login] : undefined;
 
   useEffect(() => {
-    if (login) window.history.replaceState(null, "", window.location.pathname);
+    if (!login) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    const timer = window.setTimeout(() => setLogin(null), LOGIN_NOTICE_MS);
+    return () => window.clearTimeout(timer);
   }, [login]);
 
   function started(job: Job) {
@@ -101,7 +105,9 @@ export function App() {
       </header>
       {loginMessage && (
         <div className="mt-4">
-          <Notice tone={loginMessage.tone}>{loginMessage.text}</Notice>
+          <Notice tone={loginMessage.tone} onDismiss={() => setLogin(null)}>
+            {loginMessage.text}
+          </Notice>
         </div>
       )}
       <main className="pt-8">

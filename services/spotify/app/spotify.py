@@ -114,7 +114,7 @@ def me(access: str) -> dict:
 
 
 def create_playlist(access: str, name: str, public: bool) -> dict:
-    body = {"name": name, "public": public, "description": "Criada pelo Recomendador Musical (TCC)"}
+    body = {"name": name, "public": public, "description": "Criada pelo Recomendador Musical"}
     return _post("/me/playlists", access, body)
 
 

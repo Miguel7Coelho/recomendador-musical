@@ -53,15 +53,32 @@ export function Chip({ children, value }: { children: ReactNode; value?: string 
   );
 }
 
-type NoticeProps = { tone?: "info" | "danger"; children: ReactNode };
+type NoticeProps = { tone?: "info" | "danger"; onDismiss?: () => void; children: ReactNode };
 
-export function Notice({ tone = "info", children }: NoticeProps) {
+export function Notice({ tone = "info", onDismiss, children }: NoticeProps) {
   const color = tone === "info" ? "border-info" : "border-danger";
   const title = tone === "info" ? "Aviso" : "Erro";
   return (
-    <div role={tone === "danger" ? "alert" : "status"} className={`border-l-2 ${color} bg-surface px-3 py-2 text-small`}>
-      <span className={`mr-2 font-mono ${tone === "info" ? "text-info" : "text-danger"}`}>{title}</span>
-      {children}
+    <div
+      role={tone === "danger" ? "alert" : "status"}
+      className={`flex items-center justify-between gap-3 border-l-2 ${color} bg-surface px-3 py-2 text-small`}
+    >
+      <div>
+        <span className={`mr-2 font-mono ${tone === "info" ? "text-info" : "text-danger"}`}>{title}</span>
+        {children}
+      </div>
+      {onDismiss && (
+        <button
+          type="button"
+          aria-label="Fechar aviso"
+          onClick={onDismiss}
+          className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-sm text-muted transition-colors duration-100 hover:bg-raised hover:text-text"
+        >
+          <svg viewBox="0 0 16 16" className="size-3 stroke-current" strokeWidth={2} aria-hidden>
+            <path d="M2 2l12 12M14 2L2 14" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }
