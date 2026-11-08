@@ -1,15 +1,15 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { api } from "../api/client";
 import type { CatalogRecommendation, Features, Filters, JobResult } from "../api/types";
-import { formatBpm, formatScore } from "../lib/format";
+import { formatBpm, formatScore, sortedStyles, styleName } from "../lib/format";
 import { fromCatalog, fromExternal, recArtist, recTitle, spotifyFirst, type Rec } from "../lib/recs";
 import { useSession } from "../store";
 import { Drawer } from "./Drawer";
 import { DEFAULT_FILTERS, FilterForm } from "./FilterForm";
 import { Player } from "./Player";
-import { Button, Label, Notice, Readout } from "./ui";
+import { Button, Chip, Label, Notice, Readout } from "./ui";
 
 type Similar = { seed: string; items: Rec[] };
 
@@ -30,6 +30,36 @@ async function moreLike(rec: Rec, features: Seed): Promise<Similar> {
   const { styles, genre_top } = features;
   const out = await api.moreLikeSpotify(spotify_id, { camelot, bpm, styles, genre_top, track });
   return { seed, items: out.results.map(fromExternal) };
+}
+
+const MAX_CARD_TAGS = 6;
+
+function RecTags({ rec }: { rec: Rec }) {
+  const song = rec.kind === "catalog" ? null : { title: rec.track.title, artist: rec.track.artists[0] ?? "" };
+  // Só a faixa na tela pede etiquetas; as do catálogo já vieram da análise do áudio.
+  const lastfm = useQuery({
+    queryKey: ["song-tags", song?.title, song?.artist],
+    queryFn: () => api.songTags(song!),
+    enabled: song !== null,
+    retry: false,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  });
+  const tags =
+    rec.kind === "catalog"
+      ? sortedStyles(rec.track.styles).slice(0, MAX_CARD_TAGS).map(([style]) => styleName(style))
+      : (lastfm.data?.tags ?? []);
+  if (tags.length === 0) return null;
+  return (
+    <div>
+      <Label>Etiquetas</Label>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {tags.map((tag) => (
+          <Chip key={tag}>{tag}</Chip>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 type ResultsProps = {
@@ -139,13 +169,13 @@ export function Results({ jobId, features, source, result }: ResultsProps) {
               <p className="mt-1 text-body">{recArtist(rec)}</p>
             </header>
 
-            {rec.kind !== "backup" && (
-              <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
-                <Readout label="Tom" value={rec.track.camelot} />
-                <Readout label="BPM" value={formatBpm(rec.track.bpm)} />
-                {rec.kind === "catalog" && <Readout label="Afinidade" value={formatScore(rec.track.score)} />}
-              </div>
-            )}
+            <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
+              <Readout label="Tom" value={rec.kind === "backup" ? "–" : rec.track.camelot} />
+              <Readout label="BPM" value={rec.kind === "backup" ? "–" : formatBpm(rec.track.bpm)} />
+              {rec.kind === "catalog" && <Readout label="Afinidade" value={formatScore(rec.track.score)} />}
+            </div>
+
+            <RecTags rec={rec} />
 
             <p className="text-small">
               <span className="text-muted">Parecida porque: </span>

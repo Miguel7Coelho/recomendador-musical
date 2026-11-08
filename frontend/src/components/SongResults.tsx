@@ -14,12 +14,10 @@ function SongSource({ song }: { song: SongProfile }) {
       <Label>Sua música</Label>
       <p className="mt-4 text-title font-semibold break-words">{song.title}</p>
       <p className="text-muted">{song.artist}</p>
-      {(song.camelot || song.bpm) && (
-        <div className="mt-6 grid grid-cols-2 gap-6 lg:grid-cols-1">
-          {song.camelot && <Readout label="Tom" value={song.camelot} />}
-          {song.bpm && <Readout label="BPM" value={formatBpm(song.bpm)} />}
-        </div>
-      )}
+      <div className="mt-6 grid grid-cols-2 gap-6 lg:grid-cols-1">
+        <Readout label="Tom" value={song.camelot ?? "–"} />
+        <Readout label="BPM" value={song.bpm ? formatBpm(song.bpm) : "–"} />
+      </div>
       {song.tags.length > 0 && (
         <div className="mt-6">
           <Label>Etiquetas</Label>

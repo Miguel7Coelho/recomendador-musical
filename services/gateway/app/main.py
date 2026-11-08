@@ -107,6 +107,12 @@ def search_songs(q: str) -> dict:
     return _ok(clients.http().get(f"{CATALOG_URL}/songs/search", params={"q": q}))
 
 
+@app.get("/songs/tags")
+def song_tags(title: str, artist: str) -> dict:
+    params = {"title": title, "artist": artist}
+    return _ok(clients.http().get(f"{CATALOG_URL}/songs/tags", params=params))
+
+
 @app.get("/songs/youtube")
 def youtube_video(title: str, artist: str) -> dict:
     """Vídeo para o plano B; chamada por faixa exibida, pois cada busca custa cota."""

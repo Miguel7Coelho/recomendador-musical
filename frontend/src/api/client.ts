@@ -53,6 +53,9 @@ export const api = {
   searchSongs: (q: string) =>
     request<{ results: Song[] }>(`/songs/search?${new URLSearchParams({ q })}`),
 
+  songTags: (song: Song) =>
+    request<{ tags: string[] }>(`/songs/tags?${new URLSearchParams(song)}`),
+
   youtubeVideo: (song: Song) =>
     request<{ video_id: string | null }>(`/songs/youtube?${new URLSearchParams(song)}`),
 

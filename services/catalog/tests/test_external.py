@@ -220,6 +220,11 @@ def test_busca_de_musicas_sem_repetir(fake) -> None:
     }
 
 
+def test_etiquetas_de_uma_faixa(fake) -> None:
+    r = TestClient(main.app).get("/songs/tags", params={"title": "Seed", "artist": "Fulano"})
+    assert r.json() == {"tags": ["hip-hop", "rap", "west coast"]}
+
+
 def test_pesquisa_usa_tom_e_andamento_da_musica(fake) -> None:
     out = external.song_recommendations("Seed", "Fulano", k=2)
     assert out["song"] == {"title": "Seed", "artist": "Fulano", "camelot": "11A", "bpm": 100.0,

@@ -9,6 +9,8 @@ from app import db, external, lastfm, recommend
 
 SERVICE = "catalog"
 
+MAX_CARD_TAGS = 6
+
 app = FastAPI(title=SERVICE)
 
 
@@ -169,6 +171,15 @@ def search_songs(q: str = Query(min_length=2, max_length=100)) -> dict:
     except httpx.HTTPError as e:
         raise HTTPException(502, "Last.fm indisponível") from e  # a URL do erro contém a chave
     return {"results": [{"title": title, "artist": artist} for title, artist in found]}
+
+
+@app.get("/songs/tags")
+def song_tags(title: str, artist: str) -> dict:
+    """Etiquetas de uma faixa, para o cartão que estiver na tela."""
+    try:
+        return {"tags": list(lastfm.top_tags(title, artist))[:MAX_CARD_TAGS]}
+    except httpx.HTTPError as e:
+        raise HTTPException(502, "Last.fm indisponível") from e
 
 
 @app.post("/recommend/song")

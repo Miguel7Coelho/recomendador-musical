@@ -83,6 +83,8 @@ class Services:
             if path == "/recommend/song":
                 body = {"song": json.loads(req.content), "results": [{"spotify_id": "s1"}]}
                 return httpx.Response(200, json=body)
+            if path == "/songs/tags":
+                return httpx.Response(200, json={"tags": [req.url.params["artist"]]})
             if path == "/songs/search":
                 return httpx.Response(200, json={"results": [{"title": "T", "artist": "A"}]})
             if path == f"/tracks/{FMA_ID}":
@@ -204,6 +206,8 @@ def test_sem_musica_informada_nao_envia_track(setup) -> None:
 def test_busca_de_musicas_e_mais_parecidas_com_nome(setup) -> None:
     c, svc = setup()
     assert c.get("/songs/search", params={"q": "stro"}).json()["results"][0]["title"] == "T"
+    tags = c.get("/songs/tags", params={"title": "T", "artist": "A"})
+    assert tags.json() == {"tags": ["A"]}
     seed = {"bpm": 90, "track": {"title": "T", "artist": "A"}}
     c.post("/recommend/spotify/abc", json=seed)
     assert _external_body(svc) == {
