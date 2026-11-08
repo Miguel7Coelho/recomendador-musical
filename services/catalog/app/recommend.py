@@ -5,7 +5,10 @@ Funções puras: o acesso ao banco fica em db.py e a orquestração em main.py.
 
 from collections.abc import Callable
 
-WEIGHTS = {"cosine": 0.55, "key": 0.20, "genre": 0.15, "voice": 0.10}
+# Pesos escolhidos na F3c (scripts/tune_weights.py, 399 faixas da FMA, k = 10): gênero 0,474,
+# tom compatível 0,569 e voz 0,934, contra 0,391 / 0,866 / 0,898 dos pesos iniciais da
+# especificação (0,55 / 0,20 / 0,15 / 0,10), que ficavam fora da fronteira gênero × tom.
+WEIGHTS = {"cosine": 0.70, "key": 0.10, "genre": 0.10, "voice": 0.10}
 
 # O filtro de voz só é aplicado quando a presença vocal da consulta é inequívoca.
 VOCAL_SURE = 0.7

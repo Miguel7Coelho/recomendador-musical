@@ -48,7 +48,7 @@ class Filters(BaseModel):
 class RecommendOptions(BaseModel):
     model: str = "effnet_clap"
     filters: Filters = Filters()
-    k: int = Field(10, ge=1, le=50)
+    k: int = Field(10, ge=1, le=200)  # até o tamanho do pool, para a avaliação dos pesos
     min_candidates: int = Field(20, ge=1, le=200)
     pool: int = Field(200, ge=10, le=1000)
     exclude_ids: list[UUID] = []

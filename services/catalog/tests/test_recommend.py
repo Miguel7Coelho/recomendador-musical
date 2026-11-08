@@ -54,9 +54,9 @@ def test_rank_ordena_e_explica() -> None:
     assert [x["id"] for x in out] == ["a", "b"]  # cosseno menor, mas tom, estilo e voz batem
     assert out[0]["explanation"] == "mesmo tom 11A · synth-pop · vocal feminino · 104 vs. 102 BPM"
     assert out[1]["explanation"] == ""
-    assert out[0]["score"] == pytest.approx(
-        0.55 * 0.70 + 0.20 * 1.0 + 0.15 * (0.5 / 0.6) + 0.10 * 0.8, abs=1e-3
-    )
+    w = r.WEIGHTS
+    expected = w["cosine"] * 0.70 + w["key"] * 1.0 + w["genre"] * (0.5 / 0.6) + w["voice"] * 0.8
+    assert out[0]["score"] == pytest.approx(expected, abs=1e-3)
 
 
 def test_bpm_meio_tempo_conta_na_explicacao() -> None:
